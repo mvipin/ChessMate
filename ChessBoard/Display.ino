@@ -1,5 +1,6 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_NeoMatrix.h>
+#include <Adafruit_NeoPixel.h>
 #include "Utils.h"
 
 // Color definitions
@@ -14,11 +15,14 @@
 #define WHITE    0xFFFF 
 
 #define PIN_LED 6
+#define PIN_TURN_LED 7
 #define LED_ROWS 4
 #define LED_COLUMNS 4
 #define LED_COUNT (LED_ROWS * LED_COLUMNS)
+#define NUMPIXELS 2
 
 Adafruit_NeoMatrix led_matrix(LED_COLUMNS, LED_ROWS, PIN_LED, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG + NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel turn(NUMPIXELS, PIN_TURN_LED, NEO_GRB + NEO_KHZ800);
 
 void show_count_up() {
   for (int i = 0; i < 4; i++) {
@@ -85,8 +89,12 @@ void show_chessboard() {
       led_matrix.drawPixel(i,j,MAGENTA);
     }
   }
-  
+
+  turn.setPixelColor(0, turn.Color(0, 150, 0));
+  turn.setPixelColor(1, turn.Color(150, 0, 0));
+
   led_matrix.show();
+  turn.show();
 }
 
 void display_init() {
@@ -94,4 +102,7 @@ void display_init() {
   led_matrix.setTextWrap(false);
   led_matrix.setBrightness(50);
   led_matrix.show();
+  turn.begin();
+  turn.clear();
+  turn.setBrightness(10);
 }
