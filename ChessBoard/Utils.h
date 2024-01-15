@@ -42,5 +42,8 @@ move_t detect_move(bool omo[4][4], bool omn[4][4], String &pos);
 void sensor_init();
 String check_for_cmd();
 void serial_init();
+int parse_command(String command, String tokens[], int max_tokens);
+void process_cmd(String cmd);
+void scan_buttons(bool &confirm, bool &hint);
 
 #endif // UTILS_H
