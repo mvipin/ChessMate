@@ -42,10 +42,7 @@ int loading_status(int chess_squares_already_lit) {
     target_column = chess_squares_already_lit;
   } else if (chess_squares_already_lit > 7){
     target_row = chess_squares_already_lit / 8;
-    Serial.println(target_row);
     target_column = chess_squares_already_lit % 8;
-    Serial.println(target_column);
-    Serial.println();
   }
   uint16_t color = random(0, 0xFFFF);
   led_matrix.drawPixel(target_row,target_column,color);
@@ -57,7 +54,7 @@ int loading_status(int chess_squares_already_lit) {
   return chess_squares_already_lit + 1;
 }
 
-void show_chessboard() {
+void reset_display() {
   for (int i = 0; i < 4; i=i+2) {
     for (int j = 0; j < 4; j++) {
       if (j % 2 == 0) {
@@ -70,22 +67,30 @@ void show_chessboard() {
     }
   }
 
-  if (mov[0] != "") {
+  led_matrix.show();
+}
+
+void update_display() {
+  reset_display();
+
+  //if (mov[0] != "")
+  {
     uint8_t i, j;
-    xy_lookup(mov[0], i, j);
+    //xy_lookup(mov[0], i, j);
     led_matrix.drawPixel(i,j,GREEN);
   }
 
-  if (mov[1] != "") {
+  //if (mov[1] != "")
+  {
     uint8_t i, j;
-    xy_lookup(mov[1], i, j);
+    //xy_lookup(mov[1], i, j);
     led_matrix.drawPixel(i,j,RED);
   }
 
-  if (legal_moves) {
-    for (int k=0; k<legal_moves; k++) {
+  if (legal_moves_cnt) {
+    for (int k=0; k<legal_moves_cnt; k++) {
       uint8_t i, j;
-      xy_lookup(legal[k], i, j);
+      //xy_lookup(legal_moves[k], i, j);
       led_matrix.drawPixel(i,j,MAGENTA);
     }
   }

@@ -2,54 +2,58 @@
 #include <SoftwareSerial.h>
 #include "Utils.h"
 
-const byte rxPin = 3; // Arduino RX = D3
-const byte txPin = 2; // Arduino TX = D2
+#define UART_RX_PIN 3
+#define UART_TX_PIN 2
+#define MAX_TOKENS (4 * CHESS_ROWS + 2)
 
 // Begin a software serial on pins D3 and D2 to talk to the Pi
-SoftwareSerial mySerial (rxPin, txPin);
+SoftwareSerial mySerial (UART_RX_PIN, UART_TX_PIN);
+char cmdstr[CMD_LEN_MAX];
 
-int parse_command(String command, String tokens[], int max_tokens) {
-    int index = 0;
+int parse_command(char command[], char* tokens[]) {
     int token_count = 0;
+    char* token = strtok(command, ":");
 
-    while (index != -1 && token_count < max_tokens) {
-        // Find the next delimiter
-        int found = command.indexOf(':', index);
-
-        // Extract the substring
-        tokens[token_count] = (found == -1) ? command.substring(index) : command.substring(index, found);
-
-        // Increment the token count
+    while (token != NULL && token_count < MAX_TOKENS) {
+        tokens[token_count] = token;
         token_count++;
-
-        // Move to the next part of the string
-        index = (found == -1) ? -1 : found + 1;
+        token = strtok(NULL, ":");
     }
 
     return token_count; // Return the number of tokens found
 }
 
-void process_cmd(String cmd) {
-  const int max_tokens = 10;
-  String tokens[max_tokens];
+void process_cmd(char cmd[], int size) {
+  // Extract the opcode and data
+  char* tokens[MAX_TOKENS];
+  int num_tokens = parse_command(cmd, tokens);
 
-  int num_tokens = parse_command(cmd, tokens, max_tokens);
-
-  if (tokens[0].equals("scan")) {
-    if (tokens[1].equals("start")) {
-      state = SCAN_START;
+  // Process the opcode and data
+  int idx = 0;
+  if (strcmp(tokens[idx],"init") == 0) {
+    state = MOVE_INIT;
+    reset_display();
+  } else if (strcmp(tokens[idx],"occupancy") == 0) {
+    occupancy_init[CHESS_ROWS][CHESS_COLS] = {0};
+    while (++idx < num_tokens) {
+      int row = atoi(tokens[idx]) / CHESS_COLS;
+      int col = atoi(tokens[idx]) % CHESS_ROWS;
+      occupancy_init[row][col] = 1;
     }
-  } else if (tokens[0].equals("legal")) {
-    legal_moves = num_tokens - 1;
-    Serial.print("Legal down: ");
-    for (int i=1; i<num_tokens; i++) {
-      legal[i-1] = tokens[i];
-      Serial.print(tokens[i]);
-      Serial.print(", ");
+    //print_matrix(occupancy_init);
+  } else if (strcmp(tokens[idx],"legal") == 0) {
+    while (++idx < num_tokens) {
+      if (legal_moves_cnt >= LEGAL_MOVES_MAX) {
+        Serial.println("Legal moves memory exhausted");
+        return;
+      }
+      strncpy(legal_moves[legal_moves_cnt], tokens[idx], 4);
+      legal_moves[legal_moves_cnt++][4] = '\0';
     }
-  } else {
-    Serial.print("Unknown command: ");
-    Serial.println(cmd);
+  } else if (strcmp(tokens[idx],"start") == 0) {
+    state = MOVE_START;
+  } else if (strcmp(tokens[idx],"stop") == 0) {
+    state = MOVE_STOP;
   }
 }
 
@@ -61,18 +65,18 @@ String check_for_cmd() {
   return input;
 }
 
-void wait_for_pi_to_start() {
-  int chess_squares_lit = 0;
-  while(true) {
+void scan_serial() {
+  if (state == MOVE_NONE) {
+    static int chess_squares_lit = 0;
     chess_squares_lit = loading_status(chess_squares_lit);
-    delay(100);
-    // If the Pi has sent data, read the data buffer until no more data
-    if (mySerial.available()) {
-      while (mySerial.available()) {
-        Serial.print(mySerial.read(), HEX);
-      } // Read from Pi, print to hardware Serial
-      Serial.println();
-      break;
+  }
+  
+  if ((state == MOVE_INIT) || (state == MOVE_NONE)) {
+    String cmd = check_for_cmd();
+    if (cmd != NULL) {
+      //Serial.println(cmd);
+      cmd.toCharArray(cmdstr, CMD_LEN_MAX);
+      process_cmd(cmdstr, CMD_LEN_MAX);
     }
   }
 }

@@ -2,21 +2,25 @@
 
 #define PIN_BUTTON_CONFIRM 8
 #define PIN_BUTTON_HINT 9
+#define DEBOUNCE_DELAY 50
 
-unsigned long lastDebounceTime[] = {0, 0};  // the last time the output pin was toggled
-const unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
-int buttonState[2];             // the current reading from the input pin
-int lastButtonState[] = {LOW, LOW};   // the previous reading from the input pin
-uint8_t btnpin[] = {PIN_BUTTON_CONFIRM, PIN_BUTTON_HINT};
+unsigned long lastDebounceTime[2] = {0, 0};  // the last time the output pin was toggled
+uint8_t buttonState[2];             // the current reading from the input pin
+uint8_t lastButtonState[2] = {LOW, LOW};   // the previous reading from the input pin
+uint8_t btnpin[2] = {PIN_BUTTON_CONFIRM, PIN_BUTTON_HINT};
  
 void button_init() {
   pinMode(PIN_BUTTON_HINT, INPUT);
   pinMode(PIN_BUTTON_CONFIRM, INPUT);
 }
 
-void scan_buttons(bool &confirm, bool &hint) {
-  confirm = false;
-  hint = false;
+void scan_buttons() {
+  if ((state == MOVE_INIT) || (state == MOVE_NONE)) {
+    return;
+  }
+
+  bool confirm = false;
+  bool hint = false;
   for (int i=0; i<2; i++) {
     // read the state of the switch into a local variable:
     int reading = digitalRead(btnpin[i]);
@@ -27,7 +31,7 @@ void scan_buttons(bool &confirm, bool &hint) {
       lastDebounceTime[i] = millis();
     }
 
-    if ((millis() - lastDebounceTime[i]) > debounceDelay) {
+    if ((millis() - lastDebounceTime[i]) > DEBOUNCE_DELAY) {
       // whatever the reading is at, it's been there for longer than the debounce
       // delay, so take it as the actual current state:
 
@@ -38,9 +42,11 @@ void scan_buttons(bool &confirm, bool &hint) {
         // only toggle the LED if the new button state is HIGH
         if (buttonState[i] == HIGH) {
           if (i == 0) {
+            Serial.println("Confirm");
             confirm = true;
           } else {
             hint = true;
+            Serial.println("Hint");
           }
         }
       }
