@@ -71,8 +71,33 @@ class ChessSoft:
             return None
         return start+stop
 
+    def get_occupancy(self):
+        occupancy = []
+        for square in chess.SQUARES:
+            if self.board.piece_at(square):
+                occupancy.append(square)
+        return occupancy
+
+    def serialize(self, matrix):
+        string_elements = [str(item) for item in matrix]
+        formatted_string = ":".join(string_elements)
+        return formatted_string
+
     def get_pmove(self):
-        self.serial.write("scan:start\n".encode('utf8'))
+        occupancy = self.get_occupancy()
+        occupancy_str = "occupancy:" + self.serialize(occupancy) + "\n"
+        print(occupancy_str)
+        self.serial.write(occupancy_str.encode('utf8'))
+        legal_uci_moves = [move.uci() for move in self.board.legal_moves]
+        legal_uci_moves = sorted(legal_uci_moves)
+        for char in "abcdefgh":
+            moves_with_prefix = [move for move in legal_uci_moves if move.startswith(char)]
+            legal_moves = "legal:" + (":".join(moves_with_prefix)) + "\n"
+            print(legal_moves)
+            self.serial.write(legal_moves.encode('utf8'))
+        start_str = "start\n"
+        print(start_str)
+        self.serial.write(start_str.encode('utf8'))
         while True:
             if self.serial.inWaiting():
                 line=self.serial.readline()
