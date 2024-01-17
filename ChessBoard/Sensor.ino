@@ -24,44 +24,66 @@ bool validate_occupancy() {
   if (once_only) {
     return true;
   }
-  for (int i=0; i<CHESS_ROWS; i++) {
-    for (int j=0; j<CHESS_COLS; j++) {
+
+  reset_display();
+  for (uint8_t i=0; i<CHESS_ROWS; i++) {
+    for (uint8_t j=0; j<CHESS_COLS; j++) {
       // TODO: Remove me
       if ((i < 4) || (j > 3)) continue;
 
       if (!mcp.digitalRead(sensor_pins[i][j]) != occupancy_init[i][j]) {
-        Serial.print(i);
-        Serial.print(",");
-        Serial.print(j);
-        Serial.print(": ");
-        Serial.print(sensor_pins[i][j]);
-        Serial.print(",");
-        Serial.print(occupancy_init[i][j]);
-        Serial.println();
+        update_display(algebraic_notation[i][j], RED);
+        //Serial.print(i);
+        //Serial.print(",");
+        //Serial.print(j);
+        //Serial.print(": ");
+        //Serial.print(sensor_pins[i][j]);
+        //Serial.print(",");
+        //Serial.print(occupancy_init[i][j]);
+        //Serial.println();
         ret = false;
       }
     }
   }
+  lightup_display();
   once_only = true;
 
   return ret;
 }
 
+void update_valid_moves(uint8_t row, uint8_t col) {
+   char src[3];
+   algebraic_lookup(row, col, src);
+   update_display(src, MAGENTA);
+   for (uint8_t i=0; i<legal_moves_cnt; i++) {
+        // Check if the first two characters of the move match the starting square
+        if (strncmp(legal_moves[i], src, 2) == 0) {
+            char *dst = legal_moves[i] + 2;
+            //Serial.println(dst);
+            update_display(dst, GREEN);
+        }
+    }
+}
+
 void compute_delta() {
-  for (int i=0; i<CHESS_ROWS; i++) {
-    for (int j=0; j<CHESS_COLS; j++) {
+  reset_display();
+  for (uint8_t i=0; i<CHESS_ROWS; i++) {
+    for (uint8_t j=0; j<CHESS_COLS; j++) {
       // TODO: Remove me
       if ((i < 4) || (j > 3)) continue;
 
       occupancy_delta[i][j] = (!mcp.digitalRead(sensor_pins[i][j])) - occupancy_init[i][j];
       if (occupancy_delta[i][j] == -1) {
         // Calculate and highlight the possible moves for the piece lifted
+        update_valid_moves(i, j);
+      } else if (occupancy_delta[i][j] == 1) {
+        // Calculate and validate the move
         char notation[3];
         algebraic_lookup(i, j, notation);
-        Serial.println(notation);
       }
     }
   }
+  lightup_display();
 }
 
 void scan_sensors() {
@@ -83,7 +105,7 @@ void sensor_init() {
   }
 
   // configure pin for input with pull up
-  for (int i=0; i<16; i++) {
+  for (uint8_t i=0; i<16; i++) {
     mcp.pinMode(i, INPUT_PULLUP);
   }
 }

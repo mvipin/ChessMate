@@ -21,7 +21,7 @@ void scan_buttons() {
 
   bool confirm = false;
   bool hint = false;
-  for (int i=0; i<2; i++) {
+  for (uint8_t i=0; i<2; i++) {
     // read the state of the switch into a local variable:
     int reading = digitalRead(btnpin[i]);
 

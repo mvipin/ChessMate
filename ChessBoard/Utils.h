@@ -10,6 +10,17 @@ typedef enum {
   MOVE_STOP,
 } state_t;
 
+// Color definitions
+#define BLACK    0x0000
+#define BLUE     0x001F
+#define RED      0xF800
+#define GREEN    0x07E0
+#define CYAN     0x07FF
+#define ORANGE   0xFC00
+#define MAGENTA  0xF81F
+#define YELLOW   0xFFE0 
+#define WHITE    0xFFFF 
+
 #define CHESS_ROWS 8
 #define CHESS_COLS 8
 #define LEGAL_MOVES_MAX 21

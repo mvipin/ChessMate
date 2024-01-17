@@ -3,32 +3,34 @@
 #include <Adafruit_NeoPixel.h>
 #include "Utils.h"
 
-// Color definitions
-#define BLACK    0x0000
-#define BLUE     0x001F
-#define RED      0xF800
-#define GREEN    0x07E0
-#define CYAN     0x07FF
-#define ORANGE   0xFC00
-#define MAGENTA  0xF81F
-#define YELLOW   0xFFE0 
-#define WHITE    0xFFFF 
+#define DISPLAY_LED_PIN 6
+#define CONTROL_LED_PIN 7
+#define DISPLAY_LED_CNT (CHESS_ROWS * CHESS_COLS)
+#define CONTROL_LED_CNT 2
 
-#define PIN_LED 6
-#define PIN_TURN_LED 7
-#define LED_ROWS 4
-#define LED_COLUMNS 4
-#define LED_COUNT (LED_ROWS * LED_COLUMNS)
-#define NUMPIXELS 2
+Adafruit_NeoMatrix display_pixels(CHESS_COLS, CHESS_ROWS, DISPLAY_LED_PIN, NEO_MATRIX_BOTTOM + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG + NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel control_pixel(CONTROL_LED_CNT, CONTROL_LED_PIN, NEO_GRB + NEO_KHZ800);
 
-Adafruit_NeoMatrix led_matrix(LED_COLUMNS, LED_ROWS, PIN_LED, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG + NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel turn(NUMPIXELS, PIN_TURN_LED, NEO_GRB + NEO_KHZ800);
+uint8_t display_map[CHESS_ROWS][CHESS_COLS] = {
+  {16, 16, 16, 16, 16, 16, 16, 16},
+  {16, 16, 16, 16, 16, 16, 16, 16},
+  {16, 16, 16, 16, 16, 16, 16, 16},
+  {16, 16, 16, 16, 16, 16, 16, 16},
+  {15, 14, 13, 12, 16, 16, 16, 16},
+  { 8,  9, 10, 11, 16, 16, 16, 16},
+  { 7,  6,  5,  4, 16, 16, 16, 16},
+  { 0,  1,  2,  3, 16, 16, 16, 16},
+};
+
+uint16_t remap_fn(uint16_t x, uint16_t y) {
+  return display_map[x][y];
+}
 
 void show_count_up() {
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++) {
-      led_matrix.drawPixel(i,j,ORANGE);
-      led_matrix.show();
+  for (uint8_t i = 0; i < 8; i++) {
+    for (uint8_t j = 0; j < 8; j++) {
+      display_pixels.drawPixel(i,j,ORANGE);
+      display_pixels.show();
       delay(100);
     }
   }
@@ -45,8 +47,8 @@ int loading_status(int chess_squares_already_lit) {
     target_column = chess_squares_already_lit % 8;
   }
   uint16_t color = random(0, 0xFFFF);
-  led_matrix.drawPixel(target_row,target_column,color);
-  led_matrix.show();
+  display_pixels.drawPixel(target_row,target_column,color);
+  display_pixels.show();
   if ((target_row == 7) && (target_column == 7)) {
     return 0;
   }
@@ -55,59 +57,40 @@ int loading_status(int chess_squares_already_lit) {
 }
 
 void reset_display() {
-  for (int i = 0; i < 4; i=i+2) {
-    for (int j = 0; j < 4; j++) {
+  for (uint8_t i = 0; i < CHESS_ROWS; i=i+2) {
+    for (uint8_t j = 0; j < CHESS_COLS; j++) {
       if (j % 2 == 0) {
-        led_matrix.drawPixel(i,j,WHITE);
-        led_matrix.drawPixel(i+1,j,BLUE);
+        display_pixels.drawPixel(i,j,WHITE);
+        display_pixels.drawPixel(i+1,j,BLUE);
       } else {
-        led_matrix.drawPixel(i,j,BLUE);
-        led_matrix.drawPixel(i+1,j,WHITE);
+        display_pixels.drawPixel(i,j,BLUE);
+        display_pixels.drawPixel(i+1,j,WHITE);
       }
     }
   }
-
-  led_matrix.show();
 }
 
-void update_display() {
-  reset_display();
+void lightup_display() {
+  display_pixels.show();
+}
 
-  //if (mov[0] != "")
-  {
-    uint8_t i, j;
-    //xy_lookup(mov[0], i, j);
-    led_matrix.drawPixel(i,j,GREEN);
-  }
+void update_display(char square[], uint16_t color) {
+  uint8_t i, j;
+  xy_lookup(square, i, j);
+  display_pixels.drawPixel(i,j, color);
+}
 
-  //if (mov[1] != "")
-  {
-    uint8_t i, j;
-    //xy_lookup(mov[1], i, j);
-    led_matrix.drawPixel(i,j,RED);
-  }
-
-  if (legal_moves_cnt) {
-    for (int k=0; k<legal_moves_cnt; k++) {
-      uint8_t i, j;
-      //xy_lookup(legal_moves[k], i, j);
-      led_matrix.drawPixel(i,j,MAGENTA);
-    }
-  }
-
-  turn.setPixelColor(0, turn.Color(0, 150, 0));
-  turn.setPixelColor(1, turn.Color(150, 0, 0));
-
-  led_matrix.show();
-  turn.show();
+void set_control_pixel(uint8_t idx, uint16_t color) {
+  control_pixel.setPixelColor(idx, control_pixel.Color(0, color, 0));
+  control_pixel.show();
 }
 
 void display_init() {
-  led_matrix.begin();
-  led_matrix.setTextWrap(false);
-  led_matrix.setBrightness(50);
-  led_matrix.show();
-  turn.begin();
-  turn.clear();
-  turn.setBrightness(10);
+  display_pixels.begin();
+  display_pixels.setTextWrap(false);
+  display_pixels.setBrightness(50);
+  control_pixel.begin();
+  control_pixel.clear();
+  control_pixel.setBrightness(10);
+  display_pixels.setRemapFunction(remap_fn);
 }

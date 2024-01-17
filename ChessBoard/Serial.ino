@@ -11,7 +11,7 @@ SoftwareSerial mySerial (UART_RX_PIN, UART_TX_PIN);
 char cmdstr[CMD_LEN_MAX];
 
 int parse_command(char command[], char* tokens[]) {
-    int token_count = 0;
+    uint8_t token_count = 0;
     char* token = strtok(command, ":");
 
     while (token != NULL && token_count < MAX_TOKENS) {
@@ -23,21 +23,22 @@ int parse_command(char command[], char* tokens[]) {
     return token_count; // Return the number of tokens found
 }
 
-void process_cmd(char cmd[], int size) {
+void process_cmd(char cmd[], uint8_t size) {
   // Extract the opcode and data
   char* tokens[MAX_TOKENS];
-  int num_tokens = parse_command(cmd, tokens);
+  uint8_t num_tokens = parse_command(cmd, tokens);
 
   // Process the opcode and data
-  int idx = 0;
+  uint8_t idx = 0;
   if (strcmp(tokens[idx],"init") == 0) {
     state = MOVE_INIT;
     reset_display();
+    lightup_display();
   } else if (strcmp(tokens[idx],"occupancy") == 0) {
     occupancy_init[CHESS_ROWS][CHESS_COLS] = {0};
     while (++idx < num_tokens) {
-      int row = atoi(tokens[idx]) / CHESS_COLS;
-      int col = atoi(tokens[idx]) % CHESS_ROWS;
+      uint8_t row = atoi(tokens[idx]) / CHESS_COLS;
+      uint8_t col = atoi(tokens[idx]) % CHESS_ROWS;
       occupancy_init[row][col] = 1;
     }
     //print_matrix(occupancy_init);
