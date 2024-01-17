@@ -74,9 +74,7 @@ void lightup_display() {
   display_pixels.show();
 }
 
-void update_display(char square[], uint16_t color) {
-  uint8_t i, j;
-  xy_lookup(square, i, j);
+void update_display(uint8_t i, uint8_t j, uint16_t color) {
   display_pixels.drawPixel(i,j, color);
 }
 

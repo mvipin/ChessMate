@@ -4,9 +4,8 @@
 typedef enum {
   MOVE_NONE,
   MOVE_INIT,
+  MOVE_RESET,
   MOVE_START,
-  MOVE_UP,
-  MOVE_DOWN,
   MOVE_STOP,
 } state_t;
 
@@ -26,24 +25,19 @@ typedef enum {
 #define LEGAL_MOVES_MAX 21
 #define CMD_LEN_MAX 128
 
-extern char algebraic_notation[CHESS_ROWS][CHESS_COLS][3];
-
-void algebraic_lookup(uint8_t i, uint8_t j, char *notation) {
-  if (i < CHESS_ROWS && j < CHESS_COLS) {
-    strncpy(notation, algebraic_notation[i][j], 3);
-  }
+void get_algebraic_notation(int row, int col, char *notation) {
+    if (row >= 0 && row < CHESS_ROWS && col >= 0 && col < CHESS_COLS) {
+        notation[0] = 'a' + col; // Columns map to letters
+        notation[1] = '1' + (CHESS_ROWS - 1 - row); // Rows map to numbers, inverted
+        notation[2] = '\0'; // Null-terminate the string
+    }
 }
 
-void xy_lookup(const char *notation, uint8_t &i, uint8_t &j) {
-  for (uint8_t m=0; m<CHESS_ROWS; m++) {
-    for (uint8_t n=0; n<CHESS_COLS; n++) {
-      if (strcmp(notation, algebraic_notation[m][n]) == 0) {
-        i = m;
-        j = n;
-        return;
-      }
+void xy_lookup(const char *notation, uint8_t &row, uint8_t &col) {
+    if (notation[0] >= 'a' && notation[0] <= 'h' && notation[1] >= '1' && notation[1] <= '8') {
+        col = notation[0] - 'a'; // Convert letter to column
+        row = CHESS_ROWS - (notation[1] - '1') - 1; // Convert number to row and invert
     }
-  }
 }
 
 void print_matrix(int8_t matrix[CHESS_ROWS][CHESS_COLS]) {

@@ -8,7 +8,9 @@ unsigned long lastDebounceTime[2] = {0, 0};  // the last time the output pin was
 uint8_t buttonState[2];             // the current reading from the input pin
 uint8_t lastButtonState[2] = {LOW, LOW};   // the previous reading from the input pin
 uint8_t btnpin[2] = {PIN_BUTTON_CONFIRM, PIN_BUTTON_HINT};
- 
+bool confirm;
+bool hint;
+   
 void button_init() {
   pinMode(PIN_BUTTON_HINT, INPUT);
   pinMode(PIN_BUTTON_CONFIRM, INPUT);
@@ -19,8 +21,6 @@ void scan_buttons() {
     return;
   }
 
-  bool confirm = false;
-  bool hint = false;
   for (uint8_t i=0; i<2; i++) {
     // read the state of the switch into a local variable:
     int reading = digitalRead(btnpin[i]);

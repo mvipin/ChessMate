@@ -52,9 +52,7 @@ void process_cmd(char cmd[], uint8_t size) {
       legal_moves[legal_moves_cnt++][4] = '\0';
     }
   } else if (strcmp(tokens[idx],"start") == 0) {
-    state = MOVE_START;
-  } else if (strcmp(tokens[idx],"stop") == 0) {
-    state = MOVE_STOP;
+    state = MOVE_RESET;
   }
 }
 
@@ -80,6 +78,10 @@ void scan_serial() {
       process_cmd(cmdstr, CMD_LEN_MAX);
     }
   }
+}
+
+void send_response(char resp[]) {
+  mySerial.println(resp);
 }
 
 void serial_init() {
