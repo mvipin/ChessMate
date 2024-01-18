@@ -10,6 +10,14 @@
 SoftwareSerial mySerial (UART_RX_PIN, UART_TX_PIN);
 char cmdstr[CMD_LEN_MAX];
 
+void print_legal_moves() {
+  for (int i=0; i<legal_moves_cnt; i++) {
+    Serial.print(legal_moves[i]);
+    Serial.print(" ");
+  }
+  Serial.println();
+}
+
 int parse_command(char command[], char* tokens[]) {
     uint8_t token_count = 0;
     char* token = strtok(command, ":");
@@ -35,9 +43,10 @@ void process_cmd(char cmd[], uint8_t size) {
     reset_display();
     lightup_display();
   } else if (strcmp(tokens[idx],"occupancy") == 0) {
-    occupancy_init[CHESS_ROWS][CHESS_COLS] = {0};
+    reset_occupancy();
     while (++idx < num_tokens) {
       uint8_t row = atoi(tokens[idx]) / CHESS_COLS;
+      row = 7 - row;
       uint8_t col = atoi(tokens[idx]) % CHESS_ROWS;
       occupancy_init[row][col] = 1;
     }
@@ -52,6 +61,7 @@ void process_cmd(char cmd[], uint8_t size) {
       legal_moves[legal_moves_cnt++][4] = '\0';
     }
   } else if (strcmp(tokens[idx],"start") == 0) {
+    print_legal_moves();
     state = MOVE_RESET;
   }
 }
@@ -70,10 +80,9 @@ void scan_serial() {
     chess_squares_lit = loading_status(chess_squares_lit);
   }
   
-  if ((state == MOVE_INIT) || (state == MOVE_NONE)) {
+  if ((state == MOVE_INIT) || (state == MOVE_NONE) || (state == MOVE_STOP)) {
     String cmd = check_for_cmd();
     if (cmd != NULL) {
-      //Serial.println(cmd);
       cmd.toCharArray(cmdstr, CMD_LEN_MAX);
       process_cmd(cmdstr, CMD_LEN_MAX);
     }

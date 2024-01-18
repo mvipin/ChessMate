@@ -11,7 +11,7 @@
 Adafruit_NeoMatrix display_pixels(CHESS_COLS, CHESS_ROWS, DISPLAY_LED_PIN, NEO_MATRIX_BOTTOM + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG + NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel control_pixel(CONTROL_LED_CNT, CONTROL_LED_PIN, NEO_GRB + NEO_KHZ800);
 
-uint8_t display_map[CHESS_ROWS][CHESS_COLS] = {
+const uint8_t display_map[CHESS_ROWS][CHESS_COLS] PROGMEM = {
   {16, 16, 16, 16, 16, 16, 16, 16},
   {16, 16, 16, 16, 16, 16, 16, 16},
   {16, 16, 16, 16, 16, 16, 16, 16},
@@ -23,7 +23,11 @@ uint8_t display_map[CHESS_ROWS][CHESS_COLS] = {
 };
 
 uint16_t remap_fn(uint16_t x, uint16_t y) {
-  return display_map[x][y];
+  if (x < CHESS_ROWS && y < CHESS_COLS) {
+    // Read the byte from PROGMEM
+    return pgm_read_byte_near(&display_map[x][y]);
+  }
+  return 0;
 }
 
 void show_count_up() {

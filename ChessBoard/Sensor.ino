@@ -18,6 +18,14 @@ const uint8_t sensor_pins[CHESS_ROWS][CHESS_COLS] PROGMEM = {
 int8_t occupancy_init[CHESS_ROWS][CHESS_COLS];
 int8_t occupancy_delta[CHESS_ROWS][CHESS_COLS];
 
+void reset_occupancy() {
+  for (int i=0; i<CHESS_ROWS; i++) {
+    for (int j=0; j<CHESS_COLS; j++) {
+      occupancy_init[i][j] = 0;
+    }
+  }
+}
+
 bool validate_occupancy() {
   bool ret = true;
 
@@ -78,19 +86,16 @@ bool compute_move(char move[]) {
       for (uint8_t k=0; k<legal_moves_cnt; k++) {
         // Check if the last two characters of the move match the starting square
         if (strncmp(legal_moves[k]+2, dst, 2) == 0) {
-          if (dst_found) {
-            Serial.print("Mul dst: ");
-            Serial.println(dst);
-            return false; // Multiple destinations
-          }
           update_display(i, j, ORANGE);
           dst_found = true;
+          goto src;
         }
       }
     }
   }
   if (!dst_found) return false;
-  
+
+src:
   // check for a valid source
   char src[3];
   bool src_found = false;
@@ -136,9 +141,8 @@ void compute_delta() {
   }
 }
 
-extern bool confirm, hint;
 void scan_sensors() {
-  if ((state == MOVE_INIT) || (state == MOVE_NONE)) {
+  if ((state == MOVE_INIT) || (state == MOVE_NONE) || (state == MOVE_STOP)) {
     return;
   }
 
@@ -154,11 +158,14 @@ void scan_sensors() {
     show_valid_moves();
 
     // Move finalized?
-    if (confirm || hint) {
+    if (confirm) {
+      confirm = false;
       char move[5];
       if (compute_move(move)) {
         send_response(move);
         state = MOVE_STOP;
+        legal_moves_cnt = 0;
+        reset_occupancy();
       } else {
         state = MOVE_RESET;
       }

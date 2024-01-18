@@ -1,58 +1,62 @@
 #include "Utils.h"
 
-#define PIN_BUTTON_CONFIRM 8
-#define PIN_BUTTON_HINT 9
+#define BUTTON_CONFIRM_PIN 8
+#define BUTTON_HINT_PIN 9
 #define DEBOUNCE_DELAY 50
 
-unsigned long lastDebounceTime[2] = {0, 0};  // the last time the output pin was toggled
-uint8_t buttonState[2];             // the current reading from the input pin
-uint8_t lastButtonState[2] = {LOW, LOW};   // the previous reading from the input pin
-uint8_t btnpin[2] = {PIN_BUTTON_CONFIRM, PIN_BUTTON_HINT};
+enum {
+  BUTTON_CONFIRM,
+  BUTTON_HINT,
+  BUTTON_COUNT,
+};
+
+unsigned long last_debounce_time[BUTTON_COUNT] = {0, 0};  // the last time the output pin was toggled
+uint8_t button_state[BUTTON_COUNT];             // the current reading from the input pin
+uint8_t last_button_state[BUTTON_COUNT] = {LOW, LOW};   // the previous reading from the input pin
+uint8_t button_pin[BUTTON_COUNT] = {BUTTON_CONFIRM_PIN, BUTTON_HINT_PIN};
 bool confirm;
 bool hint;
    
 void button_init() {
-  pinMode(PIN_BUTTON_HINT, INPUT);
-  pinMode(PIN_BUTTON_CONFIRM, INPUT);
+  pinMode(BUTTON_HINT_PIN, INPUT);
+  pinMode(BUTTON_CONFIRM_PIN, INPUT);
 }
 
 void scan_buttons() {
-  if ((state == MOVE_INIT) || (state == MOVE_NONE)) {
+  if ((state == MOVE_INIT) || (state == MOVE_NONE) || (state == MOVE_STOP)) {
     return;
   }
 
-  for (uint8_t i=0; i<2; i++) {
+  for (uint8_t i=0; i<BUTTON_COUNT; i++) {
     // read the state of the switch into a local variable:
-    int reading = digitalRead(btnpin[i]);
+    int reading = digitalRead(button_pin[i]);
 
     // If the switch changed, due to noise or pressing:
-    if (reading != lastButtonState[i]) {
+    if (reading != last_button_state[i]) {
       // reset the debouncing timer
-      lastDebounceTime[i] = millis();
+      last_debounce_time[i] = millis();
     }
 
-    if ((millis() - lastDebounceTime[i]) > DEBOUNCE_DELAY) {
+    if ((millis() - last_debounce_time[i]) > DEBOUNCE_DELAY) {
       // whatever the reading is at, it's been there for longer than the debounce
       // delay, so take it as the actual current state:
 
       // if the button state has changed:
-      if (reading != buttonState[i]) {
-        buttonState[i] = reading;
+      if (reading != button_state[i]) {
+        button_state[i] = reading;
 
         // only toggle the LED if the new button state is HIGH
-        if (buttonState[i] == HIGH) {
-          if (i == 0) {
-            Serial.println("Confirm");
+        if (button_state[i] == HIGH) {
+          if (i == BUTTON_CONFIRM) {
             confirm = true;
           } else {
             hint = true;
-            Serial.println("Hint");
           }
         }
       }
     }
     
-    // save the reading. Next time through the loop, it'll be the lastButtonState:
-    lastButtonState[i] = reading;
+    // save the reading. Next time through the loop, it'll be the last_button_state:
+    last_button_state[i] = reading;
   }
 }
