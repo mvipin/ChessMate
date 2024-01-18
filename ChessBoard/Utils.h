@@ -9,6 +9,9 @@ typedef enum {
   MOVE_STOP,
 } state_t;
 
+#define COMPUTER 0
+#define HUMAN 1
+
 // Color definitions
 #define BLACK    0x0000
 #define BLUE     0x001F

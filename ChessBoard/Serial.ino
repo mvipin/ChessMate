@@ -62,6 +62,8 @@ void process_cmd(char cmd[], uint8_t size) {
       legal_moves[legal_moves_cnt++][4] = '\0';
     }
   } else if (strcmp(tokens[idx],"start") == 0) {
+    set_control_pixel(HUMAN, GREEN);
+    set_control_pixel(COMPUTER, BLACK);
     print_legal_moves();
     state = MOVE_RESET;
   }

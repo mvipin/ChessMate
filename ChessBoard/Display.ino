@@ -89,8 +89,22 @@ void update_display(uint8_t i, uint8_t j, uint16_t color) {
   display_pixels.drawPixel(i,j, color);
 }
 
+uint32_t convert_16to24(uint16_t color) {
+    // Extract the red, green, and blue components from the 16-bit color
+    uint8_t r = (color >> 11) & 0x1F;
+    uint8_t g = (color >> 5) & 0x3F;
+    uint8_t b = color & 0x1F;
+
+    // Scale up to 8-bit values
+    uint8_t red = (r * 255) / 31;
+    uint8_t green = (g * 255) / 63;
+    uint8_t blue = (b * 255) / 31;
+
+    return control_pixel.Color(red, green, blue);
+}
+
 void set_control_pixel(uint8_t idx, uint16_t color) {
-  control_pixel.setPixelColor(idx, control_pixel.Color(0, color, 0));
+  control_pixel.setPixelColor(idx, convert_16to24(color));
   control_pixel.show();
 }
 
@@ -102,4 +116,6 @@ void display_init() {
   control_pixel.clear();
   control_pixel.setBrightness(10);
   display_pixels.setRemapFunction(remap_fn);
+  set_control_pixel(0, RED);
+  set_control_pixel(1, RED);
 }

@@ -166,6 +166,8 @@ void scan_sensors() {
         state = MOVE_STOP;
         legal_moves_cnt = 0;
         reset_occupancy();
+        set_control_pixel(HUMAN, BLACK);
+        set_control_pixel(COMPUTER, GREEN);
       } else {
         state = MOVE_RESET;
       }
