@@ -102,24 +102,8 @@ class ChessSoft:
             if self.serial.inWaiting():
                 line=self.serial.readline()
                 break
-        start = line.decode('utf8').strip()
-        print(start)
-        #start = input("start: ")
-        possible_squares = self.process_start_cmd(start)
-        if possible_squares == None:
-            return None
-        legal = ':'.join(possible_squares)
-        legal = "legal:" + legal + "\n"
-        print(legal)
-        self.serial.write(legal.encode('utf8'))
-        while True:
-            if self.serial.inWaiting():
-                line=self.serial.readline()
-                break
-        stop = line.decode('utf8').strip()
-        print(start)
-        #stop = input("stop: ")
-        move = self.process_stop_cmd(start, stop, possible_squares)
+        move = line.decode('utf8').strip()
+        print(move)
         return move
 
     def get_move(self, prompt):
