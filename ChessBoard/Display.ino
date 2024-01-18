@@ -30,7 +30,7 @@ uint16_t remap_fn(uint16_t x, uint16_t y) {
   return 0;
 }
 
-void show_count_up() {
+void display_count_up() {
   for (uint8_t i = 0; i < 8; i++) {
     for (uint8_t j = 0; j < 8; j++) {
       display_pixels.drawPixel(i,j,ORANGE);
@@ -38,6 +38,13 @@ void show_count_up() {
       delay(100);
     }
   }
+}
+
+void display_fatal_error() {
+  display_pixels.fillScreen(BLACK);
+  display_pixels.drawLine(0, 0, 7, 7, RED);
+  display_pixels.drawLine(7, 0, 0, 7, RED);
+  display_pixels.show();
 }
 
 int loading_status(int chess_squares_already_lit) {

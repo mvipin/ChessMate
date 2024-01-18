@@ -55,6 +55,7 @@ void process_cmd(char cmd[], uint8_t size) {
     while (++idx < num_tokens) {
       if (legal_moves_cnt >= LEGAL_MOVES_MAX) {
         Serial.println("Legal moves memory exhausted");
+        display_fatal_error();
         return;
       }
       strncpy(legal_moves[legal_moves_cnt], tokens[idx], 4);
