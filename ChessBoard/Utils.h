@@ -7,7 +7,14 @@ typedef enum {
   MOVE_RESET,
   MOVE_START,
   MOVE_STOP,
+  MOVE_COMP,
 } state_t;
+
+enum {
+  MOVE_TYPE_COMP,
+  MOVE_TYPE_HINT,
+  MOVE_TYPE_MAX,
+};
 
 #define COMPUTER 0
 #define HUMAN 1

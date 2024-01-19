@@ -23,7 +23,7 @@ void button_init() {
 }
 
 void scan_buttons() {
-  if ((state == MOVE_INIT) || (state == MOVE_NONE) || (state == MOVE_STOP)) {
+  if ((state == MOVE_INIT) || (state == MOVE_NONE)) {
     return;
   }
 

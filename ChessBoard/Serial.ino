@@ -46,6 +46,7 @@ void process_cmd(char cmd[], uint8_t size) {
     reset_occupancy();
     while (++idx < num_tokens) {
       uint8_t row = atoi(tokens[idx]) / CHESS_COLS;
+      // Hackish since the host sends the data starting from 'a1' instead of 'a8'
       row = 7 - row;
       uint8_t col = atoi(tokens[idx]) % CHESS_ROWS;
       occupancy_init[row][col] = 1;
@@ -61,11 +62,21 @@ void process_cmd(char cmd[], uint8_t size) {
       strncpy(legal_moves[legal_moves_cnt], tokens[idx], 4);
       legal_moves[legal_moves_cnt++][4] = '\0';
     }
+  } else if (strcmp(tokens[idx],"hint") == 0) {
+    strncpy(special_moves[MOVE_TYPE_HINT], tokens[++idx], 4);
+    special_moves[MOVE_TYPE_HINT][4] = '\0';
   } else if (strcmp(tokens[idx],"start") == 0) {
     set_control_pixel(HUMAN, GREEN);
     set_control_pixel(COMPUTER, BLACK);
     print_legal_moves();
     state = MOVE_RESET;
+  } else if (strcmp(tokens[idx],"fish") == 0) {
+    highlight_move(tokens[++idx]);
+    strncpy(special_moves[MOVE_TYPE_COMP], tokens[idx], 4);
+    special_moves[MOVE_TYPE_COMP][4] = '\0';
+    Serial.print("comp: ");
+    Serial.println(special_moves[MOVE_TYPE_COMP]);
+    state = MOVE_COMP;
   }
 }
 

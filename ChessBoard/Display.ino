@@ -108,6 +108,22 @@ void set_control_pixel(uint8_t idx, uint16_t color) {
   control_pixel.show();
 }
 
+void highlight_move(char *move) {
+  char part[3];
+  uint8_t row, col;
+
+  // Source
+  reset_display();
+  strncpy(part, move, 2);
+  xy_lookup(part, row, col);
+  update_display(row, col, GREEN);
+  // Destination
+  strncpy(part, move+2, 2);
+  xy_lookup(part, row, col);
+  update_display(row, col, GREEN);
+  lightup_display();
+}
+
 void display_init() {
   display_pixels.begin();
   display_pixels.setTextWrap(false);
