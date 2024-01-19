@@ -47,12 +47,12 @@ class ChessSoft:
         info = await engine.analyse(self.board, chess.engine.Limit(time=0.1))
         print("Score:", info["score"], info["pv"][0])
         await engine.quit()
-        return info["pv"][0]
+        return info["pv"][0].uci()
 
     def get_hint(self):
         asyncio.set_event_loop_policy(chess.engine.EventLoopPolicy())
-        move = asyncio.run(self.get_hint_async())
-        return move
+        uci = asyncio.run(self.get_hint_async())
+        return uci
 
     def process_start_cmd(self, start):
         # Invalidate move if:
@@ -104,8 +104,12 @@ class ChessSoft:
             legal_moves = "legal:" + (":".join(moves_with_prefix)) + "\n"
             print(legal_moves)
             self.serial.write(legal_moves.encode('utf8'))
+
+        hint = self.get_hint()
+        hint_str = "hint:" + hint + "\n"
+        self.serial.write(hint_str.encode('utf8'))
+        print(hint_str)
         start_str = "start\n"
-        print(start_str)
         self.serial.write(start_str.encode('utf8'))
         while True:
             if self.serial.inWaiting():
