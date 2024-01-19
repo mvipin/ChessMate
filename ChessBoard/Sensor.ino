@@ -15,13 +15,14 @@ const uint8_t sensor_pins[CHESS_ROWS][CHESS_COLS] PROGMEM = {
   { 3,  2,  1,  0,  3,  2,  1,  0},
 };
 
-int8_t occupancy_init[CHESS_ROWS][CHESS_COLS];
-int8_t occupancy_delta[CHESS_ROWS][CHESS_COLS];
+bool occupancy_init[CHESS_ROWS][CHESS_COLS];
+uint8_t occupancy_delta[CHESS_ROWS][CHESS_COLS];
 
 void reset_occupancy() {
   for (int i=0; i<CHESS_ROWS; i++) {
     for (int j=0; j<CHESS_COLS; j++) {
-      occupancy_init[i][j] = 0;
+      occupancy_init[i][j] = false;
+      occupancy_delta[i][j] = 0;
     }
   }
 }
@@ -34,8 +35,9 @@ bool validate_occupancy() {
     for (uint8_t j=0; j<CHESS_COLS; j++) {
       // TODO: Remove me
       if ((i < 4) || (j > 3)) continue;
-
-      if (!mcp.digitalRead(pgm_read_byte_near(&sensor_pins[i][j])) != occupancy_init[i][j]) {
+      bool present = !mcp.digitalRead(pgm_read_byte_near(&sensor_pins[i][j]));
+      bool occupied = occupancy_init[i][j];
+      if ((present && !occupied) || (!present && occupied)) {
         update_display(i, j, RED);
         ret = false;
       }
@@ -52,7 +54,7 @@ void show_valid_moves() {
   for (uint8_t i=0; i<CHESS_ROWS; i++) {
     for (uint8_t j=0; j<CHESS_COLS; j++) {
       if ((i < 4) || (j > 3)) continue; // TODO: Remove me
-      if (occupancy_delta[i][j] != -1) continue;
+      if (!(occupancy_delta[i][j] & MOVEMENT_TYPE_ABSENT)) continue;
 
       char src[3];
       get_algebraic_notation(i, j, src);
@@ -80,7 +82,7 @@ bool compute_move(char move[]) {
   for (uint8_t i=0; i<CHESS_ROWS; i++) {
     for (uint8_t j=0; j<CHESS_COLS; j++) {
       if ((i < 4) || (j > 3)) continue; // TODO: Remove me
-      if (occupancy_delta[i][j] != 1) continue;
+      if (!(occupancy_delta[i][j] & MOVEMENT_TYPE_PRESENT)) continue;
       
       get_algebraic_notation(i, j, dst);
       for (uint8_t k=0; k<legal_moves_cnt; k++) {
@@ -102,7 +104,7 @@ src:
   for (uint8_t i=0; i<CHESS_ROWS; i++) {
     for (uint8_t j=0; j<CHESS_COLS; j++) {
       if ((i < 4) || (j > 3)) continue; // TODO: Remove me
-      if (occupancy_delta[i][j] != -1) continue;
+      if (!(occupancy_delta[i][j] & MOVEMENT_TYPE_ABSENT)) continue;
       
         get_algebraic_notation(i, j, src);
         for (uint8_t k=0; k<legal_moves_cnt; k++) {
@@ -136,7 +138,16 @@ void compute_delta() {
   for (uint8_t i=0; i<CHESS_ROWS; i++) {
     for (uint8_t j=0; j<CHESS_COLS; j++) {
       if ((i < 4) || (j > 3)) continue; // TODO: Remove me
-      occupancy_delta[i][j] = (!mcp.digitalRead(pgm_read_byte_near(&sensor_pins[i][j]))) - occupancy_init[i][j];
+      bool present = !mcp.digitalRead(pgm_read_byte_near(&sensor_pins[i][j]));
+      bool occupied = occupancy_init[i][j];
+      occupancy_delta[i][j] &= ~(MOVEMENT_TYPE_ABSENT | MOVEMENT_TYPE_PRESENT);
+      if (occupied && !present) {
+        occupancy_delta[i][j] |= MOVEMENT_TYPE_REMOVE;
+        occupancy_delta[i][j] |= MOVEMENT_TYPE_ABSENT;
+      } else if (!occupied & present) {
+        occupancy_delta[i][j] |= MOVEMENT_TYPE_ADD;
+        occupancy_delta[i][j] |= MOVEMENT_TYPE_PRESENT;
+      }
     }
   }
 }

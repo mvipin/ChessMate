@@ -16,6 +16,11 @@ enum {
   MOVE_TYPE_MAX,
 };
 
+#define MOVEMENT_TYPE_REMOVE (1<<0) // sticky bit, persistent for a single move
+#define MOVEMENT_TYPE_ADD (1<<1) // sticky bit, persistent for a single move
+#define MOVEMENT_TYPE_ABSENT (1<<2) // instantaneous state
+#define MOVEMENT_TYPE_PRESENT (1<<3) // instantaneous state
+
 #define COMPUTER 0
 #define HUMAN 1
 

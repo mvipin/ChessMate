@@ -49,7 +49,7 @@ void process_cmd(char cmd[], uint8_t size) {
       // Hackish since the host sends the data starting from 'a1' instead of 'a8'
       row = 7 - row;
       uint8_t col = atoi(tokens[idx]) % CHESS_ROWS;
-      occupancy_init[row][col] = 1;
+      occupancy_init[row][col] = true;
     }
   } else if (strcmp(tokens[idx],"legal") == 0) {
     while (++idx < num_tokens) {
