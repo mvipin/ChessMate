@@ -32,7 +32,15 @@ class ChessSoft:
     def stockfish_player(self):
         asyncio.set_event_loop_policy(chess.engine.EventLoopPolicy())
         uci = asyncio.run(self.stockfish_player_async())
-        return uci
+        move = "fish:" + uci + "\n"
+        self.serial.write(move.encode('utf8'))
+        while True:
+            if self.serial.inWaiting():
+                line=self.serial.readline()
+                break
+        ack = line.decode('utf8').strip()
+        # TODO compare move and ack. Ack is generated through sensing on board
+        return ack
 
     async def get_hint_async(self) -> None:
         transport, engine = await chess.engine.popen_uci("stockfish")
@@ -83,7 +91,8 @@ class ChessSoft:
         formatted_string = ":".join(string_elements)
         return formatted_string
 
-    def get_pmove(self):
+    def get_move(self, prompt):
+        legal_uci_moves = [move.uci() for move in self.board.legal_moves]
         occupancy = self.get_occupancy()
         occupancy_str = "occupancy:" + self.serialize(occupancy) + "\n"
         print(occupancy_str)
@@ -102,20 +111,7 @@ class ChessSoft:
             if self.serial.inWaiting():
                 line=self.serial.readline()
                 break
-        move = line.decode('utf8').strip()
-        print(move)
-        return move
-
-    def get_move(self, prompt):
-        legal_uci_moves = [move.uci() for move in self.board.legal_moves]
-        uci = input(prompt)
-        if uci and uci[0] == "q":
-            raise KeyboardInterrupt()
-        if uci and uci[0] == "h":
-            move = self.get_hint()
-            uci = move.uci()
-        if uci and uci[0] == "p":
-            uci = self.get_pmove()
+        uci = line.decode('utf8').strip()
         try:
             chess.Move.from_uci(uci)
             if uci not in legal_uci_moves:
@@ -199,17 +195,12 @@ class ChessSoft:
             uci = self.player1()
         else:
             uci = self.player2()
-        #name = self.who(self.board.turn)
         self.board.push_uci(uci)
         print(self.board)
 
     def play_game(self, human_white=True, skill=0, pause=0.1):
         self.setup_game()
-        if human_white == False:
-            self.board.push_uci(self.stockfish_player())
-            print(self.board)
-        self.board.push_uci(self.human_player())
-        print(self.board)
+        self.play_next_move()
         '''
         while not self.board.is_game_over(claim_draw=True):
             if self.board.turn == chess.WHITE:
