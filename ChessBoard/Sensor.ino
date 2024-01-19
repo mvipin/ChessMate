@@ -157,6 +157,13 @@ void scan_sensors() {
     compute_delta();
     show_valid_moves();
 
+    // Need clue?
+    if (hint) {
+      highlight_move(special_moves[MOVE_TYPE_HINT], GREEN);
+      delay(1000);
+      hint = false;
+    }
+    
     // Move finalized?
     if (confirm) {
       confirm = false;
