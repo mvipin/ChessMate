@@ -56,7 +56,7 @@ void show_valid_moves() {
 
       char src[3];
       get_algebraic_notation(i, j, src);
-      update_display(i, j, MAGENTA);
+      update_display(i, j, YELLOW);
       for (uint8_t k=0; k<legal_moves_cnt; k++) {
         // Check if the first two characters of the move match the starting square
         if (strncmp(legal_moves[k], src, 2) == 0) {

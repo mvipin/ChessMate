@@ -14,7 +14,7 @@ void process_board() {
   } else if (state == MOVE_START) {
     // Need clue?
     if (hint) {
-      highlight_move(special_moves[MOVE_TYPE_HINT], GREEN);
+      highlight_move(special_moves[MOVE_TYPE_HINT], MAGENTA);
       delay(1000);
       hint = false;
     }
