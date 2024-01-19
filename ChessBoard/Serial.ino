@@ -51,7 +51,6 @@ void process_cmd(char cmd[], uint8_t size) {
       uint8_t col = atoi(tokens[idx]) % CHESS_ROWS;
       occupancy_init[row][col] = 1;
     }
-    //print_matrix(occupancy_init);
   } else if (strcmp(tokens[idx],"legal") == 0) {
     while (++idx < num_tokens) {
       if (legal_moves_cnt >= LEGAL_MOVES_MAX) {

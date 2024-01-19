@@ -14,8 +14,6 @@ unsigned long last_debounce_time[BUTTON_COUNT] = {0, 0};  // the last time the o
 uint8_t button_state[BUTTON_COUNT];             // the current reading from the input pin
 uint8_t last_button_state[BUTTON_COUNT] = {LOW, LOW};   // the previous reading from the input pin
 uint8_t button_pin[BUTTON_COUNT] = {BUTTON_CONFIRM_PIN, BUTTON_HINT_PIN};
-bool confirm;
-bool hint;
    
 void button_init() {
   pinMode(BUTTON_HINT_PIN, INPUT);
