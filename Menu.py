@@ -1,4 +1,5 @@
 import os
+import time
 import threading
 
 from LCD import SSD1306
@@ -6,17 +7,24 @@ from RPi import GPIO
 from PIL import Image, ImageDraw, ImageFont
 
 class Menu:
-    def __init__(self, pychess, options0=[], options1=[], options2=[]):
+    def __init__(self, pychess, options0=[], options1=[], options2=[], options3=[], options4=[], options5=[]):
         self.pychess = pychess
         self.options = options0
         self.options1 = options1
         self.options2 = options2
+        self.options3 = options3
+        self.options4 = options4
+        self.options5 = options5
         self.menuOption = None # Menu
         self.submenuOption = [
                 0, # Level
                 0, # Time - Computer
                 0, # Time - Human
-                0] # Color
+                0, # Color
+                0, # unused (new game)
+                0, # Rank
+                0, # File
+                0] # Confirm
         self.moveString = "Your Turn..."
         self.rowCount = 3
         self.menulevel = 0
@@ -34,6 +42,7 @@ class Menu:
                 '/fonts/pixel_arial_11.ttf', 15)
 
         self.renderThread = None
+        self.overrideMove = ""
         pychess.install_menu_ref(self)
 
     def set_options(self, options):
@@ -71,13 +80,64 @@ class Menu:
                 self.set_subselection(self.submenuOption[2] + by * 10, 300)
             elif self.menuOption == 3: # Color
                 self.set_subselection(self.submenuOption[3] + by, 1)
+            elif self.menuOption == 5: # Rank
+                self.set_subselection(self.submenuOption[5] + by,
+                        len(self.options3) - 1)
+            elif self.menuOption == 6: # File
+                self.set_subselection(self.submenuOption[6] + by,
+                        len(self.options4) - 1)
+            elif self.menuOption == 7: # Confirm
+                self.set_subselection(self.submenuOption[7] + by, 1)
+
+    def process_submenu_selection(self):
+        if self.menuOption == 5:
+            self.menulevel = 1
+            self.menuOption = 6
+            self.overrideMove += self.options3[self.submenuOption[5]]
+            if len(self.overrideMove) == 4:
+                self.show_game_status(self.overrideMove)
+                self.menulevel = 1
+                self.menuOption = 7
+        elif self.menuOption == 6:
+            self.menulevel = 1
+            self.menuOption = 5
+            self.overrideMove += self.options4[self.submenuOption[6]]
+            if len(self.overrideMove) == 4:
+                self.show_game_status(self.overrideMove)
+                self.menulevel = 1
+                self.menuOption = 7
+        elif self.menuOption == 7:
+            if self.options5[self.submenuOption[7]] == "confirm":
+                self.overrideMove += '\0'
+                return False
+            else:
+                self.menulevel = 1
+                self.menuOption = 5
+                self.overrideMove = ""
+        return True
 
     def change_level(self):
         # Toggle between menu and submenu
+        render = True
         if self.menulevel:
             self.menulevel = 0
+            render = self.process_submenu_selection()
         else:
             self.menulevel = 1
+        if render:
+            self.render()
+
+    def get_manual_override(self):
+        self.show_game_status("enter move")
+        time.sleep(1)
+        self.menulevel = 1
+        self.menuOption = 5
+        self.render()
+        self.overrideMove = ""
+        while True:
+            if len(self.overrideMove) >= 5:
+                break
+        return self.overrideMove
 
     def blank(self, draw=False):
         self.draw.rectangle((-1, -1, self.oled.width+1, self.oled.height+1),
@@ -154,6 +214,12 @@ class Menu:
                 text = "COMP(W): "
             skill = self.submenuOption[0]
             text = text + str(skill)
+        elif self.menuOption == 5:
+            text = self.options3[self.submenuOption[5]]
+        elif self.menuOption == 6:
+            text = self.options4[self.submenuOption[6]]
+        elif self.menuOption == 7:
+            text = self.options5[self.submenuOption[7]] + " " + self.overrideMove
         self.draw.text((3, 8), text, font=self.bigfont, fill=1)
         if new:
             self.pychess.setup_game(human_first, skill)

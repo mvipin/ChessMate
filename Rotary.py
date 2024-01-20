@@ -47,4 +47,3 @@ class Rotary:
 
     def __button(self, channel):
         self.menu.change_level()
-        self.menu.render()

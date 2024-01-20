@@ -27,7 +27,10 @@ m = Menu(c,
     "SUPER HARD",
     "IMPOSSIBLE"],
     ["WHITE",
-    "BLACK"])
+    "BLACK"],
+    ["a", "b", "c", "d", "e", "f", "g", "h"],
+    ["1", "2", "3", "4", "5", "6", "7", "8"],
+    ["confirm","discard"])
 
 r = Rotary(**{'menu': m, 'clk': 29, 'dt': 31, 'btn': 37})
 

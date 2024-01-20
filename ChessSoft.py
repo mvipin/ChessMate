@@ -32,7 +32,7 @@ class ChessSoft:
     def stockfish_player(self):
         asyncio.set_event_loop_policy(chess.engine.EventLoopPolicy())
         uci = asyncio.run(self.stockfish_player_async())
-        move = "fish:" + uci + "\n"
+        move = "comp:" + uci + "\n"
         self.serial.write(move.encode('utf8'))
         while True:
             if self.serial.inWaiting():
@@ -118,6 +118,18 @@ class ChessSoft:
                 line=self.serial.readline()
                 break
         uci = line.decode('utf8').strip()
+        if uci == 'ffff': # special move from board indicating override
+            # Get it from the LCD menu
+            uci = self.menu.get_manual_override().strip()
+            # TODO: check if the move is legal
+            override_str = "override:" + uci + "\n"
+            print(override_str)
+            self.serial.write(override_str.encode('utf8'))
+            while True:
+                if self.serial.inWaiting():
+                    line=self.serial.readline()
+                    break
+            uci = line.decode('utf8').strip()
         if self.menu != None:
             self.menu.show_game_status("USER: " + uci)
         try:
@@ -205,6 +217,13 @@ class ChessSoft:
             uci = self.player2()
         self.board.push_uci(uci)
         print(self.board)
+
+    def is_human_turn(self):
+        if self.board.turn == chess.WHITE and self.player1 == self.human_player:
+            return True
+        elif self.board.turn == chess.BLACK and self.player2 == self.human_player:
+            return True
+        return False
 
     def play_game(self, human_white=True, skill=0, pause=0.1):
         self.setup_game()
