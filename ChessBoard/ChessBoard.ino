@@ -1,7 +1,7 @@
 #include <SoftwareSerial.h>
 #include "Utils.h"
 
-state_t state;
+move_state_t state;
 char legal_moves[LEGAL_MOVES_MAX][5];
 uint8_t legal_moves_cnt;
 char special_moves[MOVE_TYPE_MAX][5];

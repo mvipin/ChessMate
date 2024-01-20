@@ -56,6 +56,7 @@ void process_cmd(char cmd[], uint8_t size) {
       if (legal_moves_cnt >= LEGAL_MOVES_MAX) {
         Serial.println("Legal moves memory exhausted");
         display_fatal_error();
+        delay(5000); // TODO: Reboot the platform
         return;
       }
       strncpy(legal_moves[legal_moves_cnt], tokens[idx], 4);

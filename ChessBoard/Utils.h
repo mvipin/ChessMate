@@ -8,18 +8,19 @@ typedef enum {
   MOVE_START,
   MOVE_STOP,
   MOVE_COMP,
-} state_t;
+} move_state_t;
+
+typedef enum {
+  BOARD_STATE_NONE_MOVED,
+  BOARD_STATE_PIECE_MOVED,
+  BOARD_STATE_PIECE_REMOVED,
+} board_state_t;
 
 enum {
   MOVE_TYPE_COMP,
   MOVE_TYPE_HINT,
   MOVE_TYPE_MAX,
 };
-
-#define MOVEMENT_TYPE_REMOVE (1<<0) // sticky bit, persistent for a single move
-#define MOVEMENT_TYPE_ADD (1<<1) // sticky bit, persistent for a single move
-#define MOVEMENT_TYPE_ABSENT (1<<2) // instantaneous state
-#define MOVEMENT_TYPE_PRESENT (1<<3) // instantaneous state
 
 #define COMPUTER 0
 #define HUMAN 1
@@ -55,7 +56,7 @@ void xy_lookup(const char *notation, uint8_t &row, uint8_t &col) {
     }
 }
 
-void print_matrix(int8_t matrix[CHESS_ROWS][CHESS_COLS]) {
+void print_matrix(uint8_t matrix[CHESS_ROWS][CHESS_COLS]) {
   for (int i=0; i<CHESS_ROWS; i++) {
     for (int j=0; j<CHESS_COLS; j++) {
       Serial.print(matrix[i][j]);

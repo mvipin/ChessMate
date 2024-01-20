@@ -2,6 +2,11 @@
 #include <Adafruit_MCP23X17.h>
 #include "Utils.h"
 
+#define MOVEMENT_TYPE_ABSENT (1<<0) // instantaneous state
+#define MOVEMENT_TYPE_PRESENT (1<<1) // instantaneous state
+#define MOVEMENT_TYPE_REMOVE (1<<2) // sticky bit, persistent for a single move
+#define MOVEMENT_TYPE_ADD (1<<3) // sticky bit, persistent for a single move
+
 Adafruit_MCP23X17 mcp;
 
 const uint8_t sensor_pins[CHESS_ROWS][CHESS_COLS] PROGMEM = {
@@ -73,9 +78,37 @@ void show_valid_moves() {
   lightup_display();
 }
 
-bool compute_move(char move[]) {
-  reset_display();
+board_state_t occupancy_changed() {
+  int8_t sum = 0;
+  uint8_t changes = 0;
+  for (uint8_t i=0; i<CHESS_ROWS; i++) {
+    for (uint8_t j=0; j<CHESS_COLS; j++) {
+      if ((i < 4) || (j > 3)) continue; // TODO: Remove me
+      if (occupancy_delta[i][j] & MOVEMENT_TYPE_PRESENT) {
+        sum += 1;
+        changes++;
+      } else if (occupancy_delta[i][j] & MOVEMENT_TYPE_ABSENT) {
+        sum -= 1;
+        changes++;
+      }
+    }
+  }
 
+  if ((sum > 0) || (sum < -1)) {
+    display_fatal_error();
+    delay(5000); // TODO: Reboot the platform
+  }
+  
+  if (!changes) {
+    return BOARD_STATE_NONE_MOVED;
+  } else if (!sum) {
+    return BOARD_STATE_PIECE_MOVED;
+  }
+
+  return BOARD_STATE_PIECE_REMOVED;
+}
+
+bool calculate_move_with_piece_moved(char move[]) {
   char dst[3];
   bool dst_found = false;
   // check for a valid destination
@@ -122,7 +155,6 @@ src:
 
     }
   }
-  lightup_display();
 
   if (src_found) {
     strncpy(move, src, 2);
@@ -132,6 +164,29 @@ src:
   }
 
   return false;
+}
+
+bool calculate_move_with_piece_removed(char move[]) {
+  Serial.println("ERROR");
+  print_matrix(occupancy_delta);
+  return false;
+}
+
+bool compute_move(char move[]) {
+  bool status = false;
+  
+  reset_display();
+  board_state_t change = occupancy_changed();
+  if (change == BOARD_STATE_NONE_MOVED) {
+    return status;
+  } else if (change == BOARD_STATE_PIECE_MOVED) {
+    status = calculate_move_with_piece_moved(move);
+  } else {
+    status = calculate_move_with_piece_removed(move);
+  }
+  lightup_display();
+  
+  return status;
 }
 
 void compute_delta() {
@@ -144,9 +199,15 @@ void compute_delta() {
       if (occupied && !present) {
         occupancy_delta[i][j] |= MOVEMENT_TYPE_REMOVE;
         occupancy_delta[i][j] |= MOVEMENT_TYPE_ABSENT;
-      } else if (!occupied & present) {
+      } else if (!occupied && present) {
         occupancy_delta[i][j] |= MOVEMENT_TYPE_ADD;
         occupancy_delta[i][j] |= MOVEMENT_TYPE_PRESENT;
+      }
+      if ((occupancy_delta[i][j] & MOVEMENT_TYPE_REMOVE) && present) {
+        occupancy_delta[i][j] |= MOVEMENT_TYPE_ADD;
+      }
+      if ((occupancy_delta[i][j] & MOVEMENT_TYPE_ADD) && !present) {
+        occupancy_delta[i][j] |= MOVEMENT_TYPE_REMOVE;
       }
     }
   }
