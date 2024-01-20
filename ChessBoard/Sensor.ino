@@ -95,8 +95,10 @@ board_state_t occupancy_changed() {
   }
 
   if ((sum > 0) || (sum < -1)) {
+    Serial.println(sum);
     display_fatal_error();
     delay(5000); // TODO: Reboot the platform
+    return BOARD_STATE_ERROR;
   }
   
   if (!changes) {
@@ -121,7 +123,7 @@ bool calculate_move_with_piece_moved(char move[]) {
       for (uint8_t k=0; k<legal_moves_cnt; k++) {
         // Check if the last two characters of the move match the starting square
         if (strncmp(legal_moves[k]+2, dst, 2) == 0) {
-          update_display(i, j, ORANGE);
+          update_display(i, j, GREEN);
           dst_found = true;
           goto src;
         }
@@ -148,7 +150,7 @@ src:
               Serial.println(src);
               return false; // Multiple sources
             }
-            update_display(i, j, CYAN);
+            update_display(i, j, GREEN);
             src_found = true;
           }
         }
@@ -196,8 +198,8 @@ bool calculate_move_with_piece_removed(char move[]) {
         if ((delta & MOVEMENT_TYPE_ADD) && (delta & MOVEMENT_TYPE_REMOVE)) {
           strncpy(move, legal_moves[k], 4);
           move[4] = '\0';
-          update_display(i, j, CYAN);
-          update_display(m, n, ORANGE);
+          update_display(i, j, GREEN); // source
+          update_display(m, n, ORANGE); // destination
           return true;
         }
      }
@@ -213,11 +215,10 @@ bool compute_move(char move[]) {
   board_state_t change = occupancy_changed();
   if (change == BOARD_STATE_NONE_MOVED) {
     Serial.println("none moved");
-    status = false;
   } else if (change == BOARD_STATE_PIECE_MOVED) {
     status = calculate_move_with_piece_moved(move);
     Serial.println("piece moved");
-  } else {
+  } else if (change == BOARD_STATE_PIECE_REMOVED) {
     status = calculate_move_with_piece_removed(move);
     Serial.println("piece removed");
   }

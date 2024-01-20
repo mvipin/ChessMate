@@ -11,6 +11,7 @@ typedef enum {
 } move_state_t;
 
 typedef enum {
+  BOARD_STATE_ERROR,
   BOARD_STATE_NONE_MOVED,
   BOARD_STATE_PIECE_MOVED,
   BOARD_STATE_PIECE_REMOVED,
