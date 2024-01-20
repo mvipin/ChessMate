@@ -39,7 +39,7 @@ enum {
 
 #define CHESS_ROWS 8
 #define CHESS_COLS 8
-#define LEGAL_MOVES_MAX 32
+#define LEGAL_MOVES_MAX 64
 #define CMD_LEN_MAX 128
 
 void get_algebraic_notation(int row, int col, char *notation) {
