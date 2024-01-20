@@ -59,7 +59,7 @@ void xy_lookup(const char *notation, uint8_t &row, uint8_t &col) {
 void print_matrix(uint8_t matrix[CHESS_ROWS][CHESS_COLS]) {
   for (int i=0; i<CHESS_ROWS; i++) {
     for (int j=0; j<CHESS_COLS; j++) {
-      Serial.print(matrix[i][j]);
+      Serial.print(matrix[i][j], HEX);
       Serial.print("\t");
     }
     Serial.println();

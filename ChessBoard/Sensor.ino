@@ -167,8 +167,42 @@ src:
 }
 
 bool calculate_move_with_piece_removed(char move[]) {
-  Serial.println("ERROR");
-  print_matrix(occupancy_delta);
+  char src[3];
+  uint8_t i, j;
+  bool found = false;
+  for (i=0; (i<CHESS_ROWS) && !found; i++) {
+    for (j=0; (j<CHESS_COLS) && !found; j++) {
+      if ((i < 4) || (j > 3)) continue; // TODO: Remove me
+      if (occupancy_delta[i][j] & MOVEMENT_TYPE_ABSENT) {
+        get_algebraic_notation(i, j, src);
+        Serial.print("src: ");
+        Serial.println(src);
+        found = true;
+      }
+    }
+  }
+
+  if (!found) return false;
+
+  for (uint8_t k=0; k<legal_moves_cnt; k++) {
+     // Check if the first two characters of the move match the starting square
+     if (strncmp(legal_moves[k], src, 2) == 0) {
+        char *dst = legal_moves[k] + 2;
+        Serial.print("dst: ");
+        Serial.println(dst);
+        uint8_t m, n;
+        xy_lookup(dst, m, n);
+        uint8_t delta = occupancy_delta[m][n];
+        if ((delta & MOVEMENT_TYPE_ADD) && (delta & MOVEMENT_TYPE_REMOVE)) {
+          strncpy(move, legal_moves[k], 4);
+          move[4] = '\0';
+          update_display(i, j, CYAN);
+          update_display(m, n, ORANGE);
+          return true;
+        }
+     }
+  }
+
   return false;
 }
 
@@ -178,14 +212,18 @@ bool compute_move(char move[]) {
   reset_display();
   board_state_t change = occupancy_changed();
   if (change == BOARD_STATE_NONE_MOVED) {
-    return status;
+    Serial.println("none moved");
+    status = false;
   } else if (change == BOARD_STATE_PIECE_MOVED) {
     status = calculate_move_with_piece_moved(move);
+    Serial.println("piece moved");
   } else {
     status = calculate_move_with_piece_removed(move);
+    Serial.println("piece removed");
   }
   lightup_display();
-  
+  print_matrix(occupancy_delta);
+
   return status;
 }
 
