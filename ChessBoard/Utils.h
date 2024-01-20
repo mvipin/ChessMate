@@ -8,6 +8,7 @@ typedef enum {
   MOVE_START,
   MOVE_STOP,
   MOVE_COMP,
+  MOVE_OVERRIDE,
 } move_state_t;
 
 typedef enum {
@@ -20,6 +21,7 @@ typedef enum {
 enum {
   MOVE_TYPE_COMP,
   MOVE_TYPE_HINT,
+  MOVE_TYPE_OVERRIDE,
   MOVE_TYPE_MAX,
 };
 
@@ -41,6 +43,8 @@ enum {
 #define CHESS_COLS 8
 #define LEGAL_MOVES_MAX 64
 #define CMD_LEN_MAX 128
+#define HINT_OVERRIDE_CNT 3
+#define HINT_OVERRIDE_INTERVAL 3000
 
 void get_algebraic_notation(int row, int col, char *notation) {
     if (row >= 0 && row < CHESS_ROWS && col >= 0 && col < CHESS_COLS) {

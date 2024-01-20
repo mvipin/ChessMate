@@ -70,7 +70,14 @@ void process_cmd(char cmd[], uint8_t size) {
     set_control_pixel(COMPUTER, BLACK);
     print_legal_moves();
     state = MOVE_RESET;
-  } else if (strcmp(tokens[idx],"fish") == 0) {
+  } else if (strcmp(tokens[idx],"override") == 0) {
+    strncpy(special_moves[MOVE_TYPE_OVERRIDE], tokens[++idx], 4);
+    special_moves[MOVE_TYPE_OVERRIDE][4] = '\0';
+    highlight_move(special_moves[MOVE_TYPE_OVERRIDE], GREEN);
+    Serial.print("override: ");
+    Serial.println(special_moves[MOVE_TYPE_OVERRIDE]);
+    state = MOVE_OVERRIDE;
+  } else if (strcmp(tokens[idx],"comp") == 0) {
     highlight_move(tokens[++idx], GREEN);
     strncpy(special_moves[MOVE_TYPE_COMP], tokens[idx], 4);
     special_moves[MOVE_TYPE_COMP][4] = '\0';
