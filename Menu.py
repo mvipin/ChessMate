@@ -148,10 +148,10 @@ class Menu:
             text = self.options2[self.submenuOption[3]]
         elif self.menuOption == 4:
             new = True
-            text = "Human, "
+            text = "USER(W): "
             if self.submenuOption[3] == 1:
                 human_first = False
-                text = "Computer, "
+                text = "COMP(W): "
             skill = self.submenuOption[0]
             text = text + str(skill)
         self.draw.text((3, 8), text, font=self.bigfont, fill=1)

@@ -25,7 +25,7 @@ class ChessSoft:
             time=self.time, depth=self.depth))
         uci = result.move.uci()
         if self.menu != None:
-            self.menu.show_game_status(uci)
+            self.menu.show_game_status("COMP: " + uci)
         await engine.quit()
         return uci
 
@@ -111,11 +111,15 @@ class ChessSoft:
         print(hint_str)
         start_str = "start\n"
         self.serial.write(start_str.encode('utf8'))
+        if self.menu != None:
+            self.menu.show_game_status("USER: ?")
         while True:
             if self.serial.inWaiting():
                 line=self.serial.readline()
                 break
         uci = line.decode('utf8').strip()
+        if self.menu != None:
+            self.menu.show_game_status("USER: " + uci)
         try:
             chess.Move.from_uci(uci)
             if uci not in legal_uci_moves:
