@@ -11,17 +11,17 @@ enum {
 };
 
 unsigned long last_debounce_time[BUTTON_COUNT] = {0, 0};  // the last time the output pin was toggled
-uint8_t button_state[BUTTON_COUNT];             // the current reading from the input pin
+uint8_t button_state[BUTTON_COUNT] = {LOW, LOW};             // the current reading from the input pin
 uint8_t last_button_state[BUTTON_COUNT] = {LOW, LOW};   // the previous reading from the input pin
 uint8_t button_pin[BUTTON_COUNT] = {BUTTON_CONFIRM_PIN, BUTTON_HINT_PIN};
-   
+
 void button_init() {
   pinMode(BUTTON_HINT_PIN, INPUT);
   pinMode(BUTTON_CONFIRM_PIN, INPUT);
 }
 
 void scan_buttons() {
-  if ((state == MOVE_INIT) || (state == MOVE_NONE)) {
+  if ((state == MOVE_INIT) || (state == MOVE_NONE) || (state == MOVE_STOP)) {
     return;
   }
 
@@ -44,7 +44,12 @@ void scan_buttons() {
         button_state[i] = reading;
 
         // only toggle the LED if the new button state is HIGH
+        static bool skip_first[2] = {true, true}; // TODO: This is a WAR. FIXME.
         if (button_state[i] == HIGH) {
+          if (skip_first[i]) {
+            skip_first[i] = false;
+            continue;
+          }
           if (i == BUTTON_CONFIRM) {
             confirm = true;
           } else {

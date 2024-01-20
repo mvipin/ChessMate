@@ -156,7 +156,9 @@ void scan_sensors() {
   if (state == MOVE_RESET) {
     while (!validate_occupancy());
     state = MOVE_START;
-  } else if (state == MOVE_START) {
+  }
+  
+  if (state == MOVE_START) {
     compute_delta();
     show_valid_moves();
   }
