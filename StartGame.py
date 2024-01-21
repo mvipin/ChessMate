@@ -40,6 +40,7 @@ m.render()
 def job():
     if c.is_game_set():
         if c.game_over():
+            c.show_result()
             return schedule.CancelJob
         c.play_next_move()
 

@@ -91,6 +91,23 @@ class ChessSoft:
         formatted_string = ":".join(string_elements)
         return formatted_string
 
+    def get_check_info(self):
+        result_string = ""
+
+        if self.board.is_check():
+            # Get the square of the king that is in check
+            king_color = self.board.turn
+            king_square = self.board.king(king_color)
+
+            # Get squares of pieces giving the check
+            checking_pieces = self.board.checkers()
+            checking_squares = [chess.square_name(square) for square in checking_pieces]
+
+            # Convert the king's square and checking squares to a single string
+            result_string = chess.square_name(king_square) + ':' + ':'.join(checking_squares)
+
+        return result_string
+
     def get_move(self, prompt):
         legal_uci_moves = [move.uci() for move in self.board.legal_moves]
         occupancy = self.get_occupancy()
@@ -109,6 +126,11 @@ class ChessSoft:
         hint_str = "hint:" + hint + "\n"
         self.serial.write(hint_str.encode('utf8'))
         print(hint_str)
+        check = self.get_check_info()
+        if check != "":
+            check_str = "check:" + check + "\n"
+            self.serial.write(check_str.encode('utf8'))
+            print(check_str)
         start_str = "start\n"
         self.serial.write(start_str.encode('utf8'))
         if self.menu != None:
@@ -150,7 +172,7 @@ class ChessSoft:
         return uci
 
     def who(self, player):
-        return "White" if player == chess.WHITE else "Black"
+        return "whit" if player == chess.WHITE else "blac"
 
     def install_menu_ref(self, m):
         self.menu = m
@@ -210,6 +232,13 @@ class ChessSoft:
     def game_over(self):
         return self.board.is_game_over(claim_draw=True)
 
+    def show_result(self):
+        if self.board.is_checkmate():
+            result_str = "checkmate:" + self.who(not self.board.turn) + "\n"
+            self.serial.write(result_str.encode('utf8'))
+            self.menu.show_game_status(result_str)
+            print(result_str)
+
     def play_next_move(self):
         if self.board.turn == chess.WHITE:
             uci = self.player1()
@@ -227,8 +256,6 @@ class ChessSoft:
 
     def play_game(self, human_white=True, skill=0, pause=0.1):
         self.setup_game()
-        self.play_next_move()
-        '''
         while not self.board.is_game_over(claim_draw=True):
             if self.board.turn == chess.WHITE:
                 uci = self.player1()
@@ -241,4 +268,3 @@ class ChessSoft:
         result, msg = self.get_result()
         print(msg)
         return (result, msg, self.board)
-        '''
