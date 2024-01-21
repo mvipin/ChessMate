@@ -9,6 +9,7 @@ typedef enum {
   MOVE_STOP,
   MOVE_COMP,
   MOVE_OVERRIDE,
+  MOVE_CHECKMATE,
 } move_state_t;
 
 typedef enum {
@@ -22,6 +23,7 @@ enum {
   MOVE_TYPE_COMP,
   MOVE_TYPE_HINT,
   MOVE_TYPE_OVERRIDE,
+  MOVE_TYPE_CHECKMATE,
   MOVE_TYPE_MAX,
 };
 
@@ -42,6 +44,7 @@ enum {
 #define CHESS_ROWS 8
 #define CHESS_COLS 8
 #define LEGAL_MOVES_MAX 64
+#define CHECK_SQUARES_MAX 4
 #define CMD_LEN_MAX 128
 #define HINT_OVERRIDE_CNT 3
 #define HINT_OVERRIDE_INTERVAL 3000

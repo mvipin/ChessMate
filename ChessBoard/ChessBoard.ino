@@ -4,6 +4,8 @@
 move_state_t state;
 char legal_moves[LEGAL_MOVES_MAX][5];
 uint8_t legal_moves_cnt;
+char check_squares[CHECK_SQUARES_MAX][3];
+uint8_t check_squares_cnt;
 char special_moves[MOVE_TYPE_MAX][5];
 bool confirm, hint;
 uint8_t hint_override_cnt = 0;
@@ -37,6 +39,21 @@ void process_board() {
         prev_override_ms = curr_override_ms;
       }
     }
+
+    // Display if the user is in check
+    if (check_squares_cnt) {
+      reset_display();
+      uint8_t row, col;
+      xy_lookup(check_squares[0], row, col);
+      update_display(row, col, ORANGE);
+      for (int i=1; i<check_squares_cnt; i++) {
+        xy_lookup(check_squares[i], row, col);
+        update_display(row, col, GREEN);
+      }
+      lightup_display();
+      delay(5000);
+      check_squares_cnt = 0;
+    }
   }
   
   // Move finalized?
@@ -48,6 +65,7 @@ void process_board() {
         send_response(move);
         state = MOVE_STOP;
         legal_moves_cnt = 0;
+        check_squares_cnt = 0;
         reset_occupancy();
         set_control_pixel(HUMAN, BLACK);
         set_control_pixel(COMPUTER, GREEN);
@@ -65,6 +83,8 @@ void process_board() {
       state = MOVE_STOP;
       set_control_pixel(HUMAN, BLACK);
       set_control_pixel(COMPUTER, GREEN);
+    } else if (state == MOVE_CHECKMATE) {
+      display_win(special_moves[MOVE_TYPE_CHECKMATE]);
     }
   }
 }

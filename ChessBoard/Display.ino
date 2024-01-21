@@ -40,6 +40,21 @@ void display_count_up() {
   }
 }
 
+void display_win(char side[]) {
+  uint16_t color = BLUE;
+  if (strcmp(side,"whit") == 0) {
+    color = WHITE;
+  }
+  for (uint8_t i = 0; i < 8; i++) {
+    for (uint8_t j = 0; j < 8; j++) {
+      reset_display();
+      update_display(i, j, color);
+      lightup_display();
+      delay(100);
+    }
+  }
+}
+
 void display_fatal_error() {
   display_pixels.fillScreen(BLACK);
   display_pixels.drawLine(0, 0, 7, 7, RED);

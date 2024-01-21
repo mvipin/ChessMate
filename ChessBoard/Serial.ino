@@ -54,7 +54,7 @@ void process_cmd(char cmd[], uint8_t size) {
   } else if (strcmp(tokens[idx],"legal") == 0) {
     while (++idx < num_tokens) {
       if (legal_moves_cnt >= LEGAL_MOVES_MAX) {
-        Serial.println("Legal moves memory exhausted");
+        Serial.println("no mem");
         display_fatal_error();
         delay(5000); // TODO: Reboot the platform
         return;
@@ -65,6 +65,17 @@ void process_cmd(char cmd[], uint8_t size) {
   } else if (strcmp(tokens[idx],"hint") == 0) {
     strncpy(special_moves[MOVE_TYPE_HINT], tokens[++idx], 4);
     special_moves[MOVE_TYPE_HINT][4] = '\0';
+  } else if (strcmp(tokens[idx],"check") == 0) {
+    while (++idx < num_tokens) {
+      if (check_squares_cnt >= CHECK_SQUARES_MAX) {
+        Serial.println("no mem sq");
+        display_fatal_error();
+        delay(5000); // TODO: Reboot the platform
+        return;
+      }
+      strncpy(check_squares[check_squares_cnt], tokens[idx], 2);
+      check_squares[check_squares_cnt++][3] = '\0';
+    }
   } else if (strcmp(tokens[idx],"start") == 0) {
     set_control_pixel(HUMAN, GREEN);
     set_control_pixel(COMPUTER, BLACK);
@@ -74,8 +85,6 @@ void process_cmd(char cmd[], uint8_t size) {
     strncpy(special_moves[MOVE_TYPE_OVERRIDE], tokens[++idx], 4);
     special_moves[MOVE_TYPE_OVERRIDE][4] = '\0';
     highlight_move(special_moves[MOVE_TYPE_OVERRIDE], GREEN);
-    Serial.print("override: ");
-    Serial.println(special_moves[MOVE_TYPE_OVERRIDE]);
     state = MOVE_OVERRIDE;
   } else if (strcmp(tokens[idx],"comp") == 0) {
     highlight_move(tokens[++idx], GREEN);
@@ -84,6 +93,10 @@ void process_cmd(char cmd[], uint8_t size) {
     Serial.print("comp: ");
     Serial.println(special_moves[MOVE_TYPE_COMP]);
     state = MOVE_COMP;
+  } else if (strcmp(tokens[idx],"checkmate") == 0) {
+    strncpy(special_moves[MOVE_TYPE_CHECKMATE], tokens[++idx], 4);
+    special_moves[MOVE_TYPE_CHECKMATE][4] = '\0';
+    state = MOVE_CHECKMATE;
   }
 }
 

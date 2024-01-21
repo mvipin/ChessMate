@@ -214,13 +214,13 @@ bool compute_move(char move[]) {
   reset_display();
   board_state_t change = occupancy_changed();
   if (change == BOARD_STATE_NONE_MOVED) {
-    Serial.println("none moved");
+    Serial.println("none");
   } else if (change == BOARD_STATE_PIECE_MOVED) {
     status = calculate_move_with_piece_moved(move);
-    Serial.println("piece moved");
+    Serial.println("moved");
   } else if (change == BOARD_STATE_PIECE_REMOVED) {
     status = calculate_move_with_piece_removed(move);
-    Serial.println("piece removed");
+    Serial.println("removed");
   }
   lightup_display();
   print_matrix(occupancy_delta);
