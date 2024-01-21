@@ -73,4 +73,14 @@ void print_matrix(uint8_t matrix[CHESS_ROWS][CHESS_COLS]) {
     Serial.println();
   }
 }
+
+void print_matrix(bool matrix[CHESS_ROWS][CHESS_COLS]) {
+  for (int i=0; i<CHESS_ROWS; i++) {
+    for (int j=0; j<CHESS_COLS; j++) {
+      Serial.print(matrix[i][j], HEX);
+      Serial.print("\t");
+    }
+    Serial.println();
+  }
+}
 #endif // UTILS_H

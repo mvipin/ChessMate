@@ -19,7 +19,7 @@ void process_board() {
     // Need clue?
     if (hint) {
       hint = false;
-      highlight_move(special_moves[MOVE_TYPE_HINT], MAGENTA);
+      highlight_move(special_moves[MOVE_TYPE_HINT], MAGENTA, MAGENTA);
       delay(500);
 
       // Detect user override

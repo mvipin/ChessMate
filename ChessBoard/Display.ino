@@ -123,7 +123,7 @@ void set_control_pixel(uint8_t idx, uint16_t color) {
   control_pixel.show();
 }
 
-void highlight_move(char *move, uint16_t color) {
+void highlight_move(char *move, uint16_t color_src, uint16_t color_dst) {
   char part[3];
   uint8_t row, col;
 
@@ -131,11 +131,11 @@ void highlight_move(char *move, uint16_t color) {
   reset_display();
   strncpy(part, move, 2);
   xy_lookup(part, row, col);
-  update_display(row, col, color);
+  update_display(row, col, color_src);
   // Destination
   strncpy(part, move+2, 2);
   xy_lookup(part, row, col);
-  update_display(row, col, color);
+  update_display(row, col, color_dst);
   lightup_display();
 }
 
