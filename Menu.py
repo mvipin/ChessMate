@@ -22,6 +22,7 @@ class Menu:
                 0, # Time - Human
                 0, # Color
                 0, # unused (new game)
+                0, # unused (shutdown)
                 0, # Rank
                 0, # File
                 0] # Confirm
@@ -80,39 +81,39 @@ class Menu:
                 self.set_subselection(self.submenuOption[2] + by * 10, 300)
             elif self.menuOption == 3: # Color
                 self.set_subselection(self.submenuOption[3] + by, 1)
-            elif self.menuOption == 5: # Rank
-                self.set_subselection(self.submenuOption[5] + by,
-                        len(self.options3) - 1)
-            elif self.menuOption == 6: # File
+            elif self.menuOption == 6: # Rank
                 self.set_subselection(self.submenuOption[6] + by,
+                        len(self.options3) - 1)
+            elif self.menuOption == 7: # File
+                self.set_subselection(self.submenuOption[7] + by,
                         len(self.options4) - 1)
-            elif self.menuOption == 7: # Confirm
-                self.set_subselection(self.submenuOption[7] + by, 1)
+            elif self.menuOption == 8: # Confirm
+                self.set_subselection(self.submenuOption[8] + by, 1)
 
     def process_submenu_selection(self):
-        if self.menuOption == 5:
+        if self.menuOption == 6:
+            self.menulevel = 1
+            self.menuOption = 7
+            self.overrideMove += self.options3[self.submenuOption[6]]
+            if len(self.overrideMove) == 4:
+                self.show_game_status(self.overrideMove)
+                self.menulevel = 1
+                self.menuOption = 8
+        elif self.menuOption == 7:
             self.menulevel = 1
             self.menuOption = 6
-            self.overrideMove += self.options3[self.submenuOption[5]]
+            self.overrideMove += self.options4[self.submenuOption[7]]
             if len(self.overrideMove) == 4:
                 self.show_game_status(self.overrideMove)
                 self.menulevel = 1
-                self.menuOption = 7
-        elif self.menuOption == 6:
-            self.menulevel = 1
-            self.menuOption = 5
-            self.overrideMove += self.options4[self.submenuOption[6]]
-            if len(self.overrideMove) == 4:
-                self.show_game_status(self.overrideMove)
-                self.menulevel = 1
-                self.menuOption = 7
-        elif self.menuOption == 7:
-            if self.options5[self.submenuOption[7]] == "confirm":
+                self.menuOption = 8
+        elif self.menuOption == 8:
+            if self.options5[self.submenuOption[8]] == "confirm":
                 self.overrideMove += '\0'
                 return False
             else:
                 self.menulevel = 1
-                self.menuOption = 5
+                self.menuOption = 6
                 self.overrideMove = ""
         return True
 
@@ -131,7 +132,7 @@ class Menu:
         self.show_game_status("enter move")
         time.sleep(1)
         self.menulevel = 1
-        self.menuOption = 5
+        self.menuOption = 6
         self.render()
         self.overrideMove = ""
         while True:
@@ -214,12 +215,12 @@ class Menu:
                 text = "COMP(W): "
             skill = self.submenuOption[0]
             text = text + str(skill)
-        elif self.menuOption == 5:
-            text = self.options3[self.submenuOption[5]]
         elif self.menuOption == 6:
-            text = self.options4[self.submenuOption[6]]
+            text = self.options3[self.submenuOption[6]]
         elif self.menuOption == 7:
-            text = self.options5[self.submenuOption[7]] + " " + self.overrideMove
+            text = self.options4[self.submenuOption[7]]
+        elif self.menuOption == 8:
+            text = self.options5[self.submenuOption[8]] + " " + self.overrideMove
         self.draw.text((3, 8), text, font=self.bigfont, fill=1)
         if new:
             self.pychess.setup_game(human_first, skill)
