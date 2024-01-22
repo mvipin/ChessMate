@@ -84,7 +84,7 @@ void process_cmd(char cmd[], uint8_t size) {
   } else if (strcmp(tokens[idx],"override") == 0) {
     strncpy(special_moves[MOVE_TYPE_OVERRIDE], tokens[++idx], 4);
     special_moves[MOVE_TYPE_OVERRIDE][4] = '\0';
-    //while (!validate_occupancy());
+    while (!validate_occupancy());
     uint8_t row, col;
     xy_lookup(special_moves[MOVE_TYPE_OVERRIDE]+2, row, col);
     uint16_t color = GREEN;
@@ -95,7 +95,6 @@ void process_cmd(char cmd[], uint8_t size) {
     state = MOVE_OVERRIDE;
     Serial.print("override: ");
     Serial.println(special_moves[MOVE_TYPE_OVERRIDE]);
-    print_matrix(occupancy_init);
   } else if (strcmp(tokens[idx],"comp") == 0) {
     strncpy(special_moves[MOVE_TYPE_COMP], tokens[++idx], 4);
     special_moves[MOVE_TYPE_COMP][4] = '\0';
@@ -111,10 +110,27 @@ void process_cmd(char cmd[], uint8_t size) {
     Serial.print("comp: ");
     Serial.println(special_moves[MOVE_TYPE_COMP]);
   } else if (strcmp(tokens[idx],"checkmate") == 0) {
+    char dst[3];
+    strncpy(dst, tokens[++idx], 2);
+    dst[2] = '\0';
     strncpy(special_moves[MOVE_TYPE_CHECKMATE], tokens[++idx], 4);
     special_moves[MOVE_TYPE_CHECKMATE][4] = '\0';
     state = MOVE_CHECKMATE;
     reset_display();
+    uint8_t row, col;
+    xy_lookup(dst, row, col);
+    for (int i=-1; i<=1; i++) {
+      for (int j=-1; j<=1; j++) {
+        if ((i == 0) && (j == 0)) continue; // king square itself
+        if ((row == 0) && (i == -1)) continue; // skip negative row index
+        if ((col == 0) && (j == -1)) continue; // skip negative col index
+        if ((row == 7) && (i == 1)) continue; // skip out-of-bounds row index
+        if ((col == 7) && (j == 1)) continue; // skip out-of-bounds col index
+        if (!occupancy_init[row+i][col+j]) {
+          update_display(row+i, col+j, ORANGE);
+        }
+      }
+    }
     lightup_display();
   }
 }

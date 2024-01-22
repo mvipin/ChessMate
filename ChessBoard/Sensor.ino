@@ -223,7 +223,7 @@ bool compute_move(char move[]) {
     Serial.println("removed");
   }
   lightup_display();
-  print_matrix(occupancy_delta);
+  //print_matrix(occupancy_delta);
 
   return status;
 }
