@@ -32,6 +32,9 @@ class ChessSoft:
     def stockfish_player(self):
         asyncio.set_event_loop_policy(chess.engine.EventLoopPolicy())
         uci = asyncio.run(self.stockfish_player_async())
+        occupancy = self.get_occupancy()
+        occupancy_str = "occupancy:" + occupancy + "\n"
+        self.serial.write(occupancy_str.encode('utf8'))
         move = "comp:" + uci + "\n"
         self.serial.write(move.encode('utf8'))
         while True:
@@ -84,10 +87,7 @@ class ChessSoft:
         for square in chess.SQUARES:
             if self.board.piece_at(square):
                 occupancy.append(square)
-        return occupancy
-
-    def serialize(self, matrix):
-        string_elements = [str(item) for item in matrix]
+        string_elements = [str(item) for item in occupancy]
         formatted_string = ":".join(string_elements)
         return formatted_string
 
@@ -111,8 +111,7 @@ class ChessSoft:
     def get_move(self, prompt):
         legal_uci_moves = [move.uci() for move in self.board.legal_moves]
         occupancy = self.get_occupancy()
-        occupancy_str = "occupancy:" + self.serialize(occupancy) + "\n"
-        print(occupancy_str)
+        occupancy_str = "occupancy:" + occupancy + "\n"
         self.serial.write(occupancy_str.encode('utf8'))
         legal_uci_moves = [move.uci() for move in self.board.legal_moves]
         legal_uci_moves = sorted(legal_uci_moves)
@@ -144,6 +143,9 @@ class ChessSoft:
             # Get it from the LCD menu
             uci = self.menu.get_manual_override().strip()
             # TODO: check if the move is legal
+            occupancy = self.get_occupancy()
+            occupancy_str = "occupancy:" + occupancy + "\n"
+            self.serial.write(occupancy_str.encode('utf8'))
             override_str = "override:" + uci + "\n"
             print(override_str)
             self.serial.write(override_str.encode('utf8'))
@@ -234,7 +236,11 @@ class ChessSoft:
 
     def show_result(self):
         if self.board.is_checkmate():
-            result_str = "checkmate:" + self.who(not self.board.turn) + "\n"
+            occupancy = self.get_occupancy()
+            occupancy_str = "occupancy:" + occupancy + "\n"
+            self.serial.write(occupancy_str.encode('utf8'))
+            king_square = chess.square_name(self.board.king(self.board.turn))
+            result_str = "checkmate:" + king_square + ":" + self.who(not self.board.turn) + "\n"
             self.serial.write(result_str.encode('utf8'))
             self.menu.show_game_status(result_str)
             print(result_str)
