@@ -1,4 +1,3 @@
-#include <SoftwareSerial.h>
 #include "Utils.h"
 
 move_state_t state;
@@ -89,14 +88,24 @@ void process_board() {
   }
 }
 
+void debug_init() {
+  Serial.begin(9600);
+  for (uint16_t trial = 0; trial < 2000; trial++) {
+      if (Serial) {
+        Serial.print("Debug initialized: ");
+        Serial.println(trial);
+        break;
+      }
+  }
+}
+
 void setup() {
+  debug_init();
   serial_init();
+  display_init();
   sensor_init();
   button_init();
-  display_init();
   state = MOVE_NONE;
-
-  Serial.begin(9600);
   Serial.println("Welcome to ChessMate!");
 }
 

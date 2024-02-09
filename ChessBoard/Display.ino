@@ -3,8 +3,8 @@
 #include <Adafruit_NeoPixel.h>
 #include "Utils.h"
 
-#define DISPLAY_LED_PIN 6
-#define CONTROL_LED_PIN 7
+#define DISPLAY_LED_PIN 12
+#define CONTROL_LED_PIN 19
 #define DISPLAY_LED_CNT (CHESS_ROWS * CHESS_COLS)
 #define CONTROL_LED_CNT 2
 
@@ -12,14 +12,14 @@ Adafruit_NeoMatrix display_pixels(CHESS_COLS, CHESS_ROWS, DISPLAY_LED_PIN, NEO_M
 Adafruit_NeoPixel control_pixel(CONTROL_LED_CNT, CONTROL_LED_PIN, NEO_GRB + NEO_KHZ800);
 
 const uint8_t display_map[CHESS_ROWS][CHESS_COLS] PROGMEM = {
-  {16, 16, 16, 16, 16, 16, 16, 16},
-  {16, 16, 16, 16, 16, 16, 16, 16},
-  {16, 16, 16, 16, 16, 16, 16, 16},
-  {16, 16, 16, 16, 16, 16, 16, 16},
-  {15, 14, 13, 12, 16, 16, 16, 16},
-  { 8,  9, 10, 11, 16, 16, 16, 16},
-  { 7,  6,  5,  4, 16, 16, 16, 16},
-  { 0,  1,  2,  3, 16, 16, 16, 16},
+  { 0,  1,  2,  3,  4,  5,  6,  7},
+  {15, 14, 13, 12, 11, 10,  9,  8},
+  {16, 17, 18, 19, 20, 21, 22, 23},
+  {31, 30, 29, 28, 27, 26, 25, 24},
+  {32, 33, 34, 35, 36, 37, 38, 39},
+  {47, 46, 45, 44, 43, 42, 41, 40},
+  {48, 49, 50, 51, 52, 53, 54, 55},
+  {63, 62, 61, 60, 59, 58, 57, 56},
 };
 
 uint16_t remap_fn(uint16_t x, uint16_t y) {
@@ -31,11 +31,13 @@ uint16_t remap_fn(uint16_t x, uint16_t y) {
 }
 
 void display_count_up() {
-  for (uint8_t i = 0; i < 8; i++) {
-    for (uint8_t j = 0; j < 8; j++) {
+  for (uint8_t i = 0; i < CHESS_ROWS; i++) {
+    for (uint8_t j = 0; j < CHESS_COLS; j++) {
       display_pixels.drawPixel(i,j,ORANGE);
       display_pixels.show();
       delay(100);
+      display_pixels.drawPixel(i,j,BLACK);
+      display_pixels.show();
     }
   }
 }
@@ -45,8 +47,8 @@ void display_win(char side[]) {
   if (strcmp(side,"whit") == 0) {
     color = WHITE;
   }
-  for (uint8_t i = 0; i < 8; i++) {
-    for (uint8_t j = 0; j < 8; j++) {
+  for (uint8_t i = 0; i < CHESS_ROWS; i++) {
+    for (uint8_t j = 0; j < CHESS_COLS; j++) {
       reset_display();
       update_display(i, j, color);
       lightup_display();
@@ -60,6 +62,20 @@ void display_fatal_error() {
   display_pixels.drawLine(0, 0, 7, 7, RED);
   display_pixels.drawLine(7, 0, 0, 7, RED);
   display_pixels.show();
+}
+
+void display_board_status(uint8_t x_start, uint8_t y_start, uint8_t x_stop, uint8_t y_stop, uint16_t color) {
+  for (uint8_t i = 0; i < CHESS_ROWS; i++) {
+    for (uint8_t j = 0; j < CHESS_COLS; j++) {
+      if ((i >= x_start) && (j >= y_start) && (i <= x_stop) && (j <= y_stop)) {
+        update_display(i, j, color);
+      } else {
+        update_display(i, j, BLACK);
+      }
+    }
+  }
+  
+  lightup_display();
 }
 
 int loading_status(int chess_squares_already_lit) {

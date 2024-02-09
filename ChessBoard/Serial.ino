@@ -1,13 +1,11 @@
-#include <Arduino.h>
-#include <SoftwareSerial.h>
 #include "Utils.h"
 
-#define UART_RX_PIN 3
-#define UART_TX_PIN 2
+#define UART_RX_PIN 9
+#define UART_TX_PIN 8
 #define MAX_TOKENS (4 * CHESS_ROWS + 2)
 
-// Begin a software serial on pins D3 and D2 to talk to the Pi
-SoftwareSerial mySerial (UART_RX_PIN, UART_TX_PIN);
+UART Serial2(UART_TX_PIN, UART_RX_PIN, NC, NC);
+
 char cmdstr[CMD_LEN_MAX];
 
 void print_legal_moves() {
@@ -40,14 +38,13 @@ void process_cmd(char cmd[], uint8_t size) {
   uint8_t idx = 0;
   if (strcmp(tokens[idx],"init") == 0) {
     state = MOVE_INIT;
+    Serial.println("Host initialized");
     reset_display();
     lightup_display();
   } else if (strcmp(tokens[idx],"occupancy") == 0) {
     reset_occupancy();
     while (++idx < num_tokens) {
       uint8_t row = atoi(tokens[idx]) / CHESS_COLS;
-      // Hackish since the host sends the data starting from 'a1' instead of 'a8'
-      row = 7 - row;
       uint8_t col = atoi(tokens[idx]) % CHESS_ROWS;
       occupancy_init[row][col] = true;
     }
@@ -136,7 +133,7 @@ void process_cmd(char cmd[], uint8_t size) {
 }
 
 String check_for_cmd() {
-  String input = mySerial.readStringUntil('\n');
+  String input = Serial2.readStringUntil('\n');
   if (input != NULL) {
     input.trim();
   }
@@ -159,9 +156,10 @@ void scan_serial() {
 }
 
 void send_response(char resp[]) {
-  mySerial.println(resp);
+  Serial2.println(resp);
 }
 
 void serial_init() {
-  mySerial.begin(9600); // Software serial for communicating with Pi
+  Serial2.begin(9600); // Software serial for communicating with Pi
+  Serial.println("Host/Target serial communication initialized");
 }

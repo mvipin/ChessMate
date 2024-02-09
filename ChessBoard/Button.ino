@@ -1,7 +1,7 @@
 #include "Utils.h"
 
-#define BUTTON_CONFIRM_PIN 8
-#define BUTTON_HINT_PIN 9
+#define BUTTON_CONFIRM_PIN 22
+#define BUTTON_HINT_PIN 28
 #define DEBOUNCE_DELAY 50
 
 enum {

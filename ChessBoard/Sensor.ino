@@ -2,26 +2,42 @@
 #include <Adafruit_MCP23X17.h>
 #include "Utils.h"
 
-#define MOVEMENT_TYPE_ABSENT (1<<0) // instantaneous state
-#define MOVEMENT_TYPE_PRESENT (1<<1) // instantaneous state
-#define MOVEMENT_TYPE_REMOVE (1<<2) // sticky bit, persistent for a single move
-#define MOVEMENT_TYPE_ADD (1<<3) // sticky bit, persistent for a single move
+#define MOVEMENT_TYPE_ABSENT (1 << 0) // instantaneous state
+#define MOVEMENT_TYPE_PRESENT (1 << 1) // instantaneous state
+#define MOVEMENT_TYPE_REMOVE (1 << 2) // sticky bit, persistent for a single move
+#define MOVEMENT_TYPE_ADD (1 << 3) // sticky bit, persistent for a single move
 
-Adafruit_MCP23X17 mcp;
+Adafruit_MCP23X17 mcp[NUM_BOARDS];
+
+enum {
+  X_START,
+  Y_START,
+  X_STOP,
+  Y_STOP,
+  XY_SIZE
+};
+
+const uint8_t sensor_coords[NUM_BOARDS][XY_SIZE] = {
+  {0, 0, 3, 3},
+  {0, 4, 3, 7},
+  {4, 0, 7, 3},
+  {4, 4, 7, 7},
+};
 
 const uint8_t sensor_pins[CHESS_ROWS][CHESS_COLS] PROGMEM = {
-  {15, 14, 13, 12, 15, 14, 13, 12},
-  {11, 10,  9,  8, 11, 10,  9,  8},
-  { 7,  6,  5,  4,  7,  6,  5,  4},
-  { 3,  2,  1,  0,  3,  2,  1,  0},
-  {15, 14, 13, 12, 15, 14, 13, 12},
-  {11, 10,  9,  8, 11, 10,  9,  8},
-  { 7,  6,  5,  4,  7,  6,  5,  4},
-  { 3,  2,  1,  0,  3,  2,  1,  0},
+  { 3,  2,  1,  0, 15, 14, 13, 12},
+  { 7,  6,  5,  4, 11, 10,  9,  8},
+  {11, 10,  9,  8,  7,  6,  5,  4},
+  {15, 14, 13, 12,  3,  2,  1,  0},
+  { 3,  2,  1,  0, 15, 14, 13, 12},
+  { 7,  6,  5,  4, 11, 10,  9,  8},
+  {11, 10,  9,  8,  7,  6,  5,  4},
+  {15, 14, 13, 12,  3,  2,  1,  0},
 };
 
 bool occupancy_init[CHESS_ROWS][CHESS_COLS];
 uint8_t occupancy_delta[CHESS_ROWS][CHESS_COLS];
+uint8_t i2c_addr[NUM_BOARDS] = {0x22, 0x23, 0x20, 0x21};
 
 void reset_occupancy() {
   for (int i=0; i<CHESS_ROWS; i++) {
@@ -38,9 +54,8 @@ bool validate_occupancy() {
   reset_display();
   for (uint8_t i=0; i<CHESS_ROWS; i++) {
     for (uint8_t j=0; j<CHESS_COLS; j++) {
-      // TODO: Remove me
-      if ((i < 4) || (j > 3)) continue;
-      bool present = !mcp.digitalRead(pgm_read_byte_near(&sensor_pins[i][j]));
+      uint8_t id = board_id_lookup(i, j);
+      bool present = !mcp[id].digitalRead(pgm_read_byte_near(&sensor_pins[i][j]));
       bool occupied = occupancy_init[i][j];
       if ((present && !occupied) || (!present && occupied)) {
         update_display(i, j, RED);
@@ -58,7 +73,6 @@ void show_valid_moves() {
   // Highlight the possible moves for the piece(s) lifted
   for (uint8_t i=0; i<CHESS_ROWS; i++) {
     for (uint8_t j=0; j<CHESS_COLS; j++) {
-      if ((i < 4) || (j > 3)) continue; // TODO: Remove me
       if (!(occupancy_delta[i][j] & MOVEMENT_TYPE_ABSENT)) continue;
 
       char src[3];
@@ -83,7 +97,6 @@ board_state_t occupancy_changed() {
   uint8_t changes = 0;
   for (uint8_t i=0; i<CHESS_ROWS; i++) {
     for (uint8_t j=0; j<CHESS_COLS; j++) {
-      if ((i < 4) || (j > 3)) continue; // TODO: Remove me
       if (occupancy_delta[i][j] & MOVEMENT_TYPE_PRESENT) {
         sum += 1;
         changes++;
@@ -116,7 +129,6 @@ bool calculate_move_with_piece_moved(char move[]) {
   // check for a valid destination
   for (uint8_t i=0; i<CHESS_ROWS; i++) {
     for (uint8_t j=0; j<CHESS_COLS; j++) {
-      if ((i < 4) || (j > 3)) continue; // TODO: Remove me
       if (!(occupancy_delta[i][j] & MOVEMENT_TYPE_PRESENT)) continue;
       
       get_algebraic_notation(i, j, dst);
@@ -138,7 +150,6 @@ src:
   bool src_found = false;
   for (uint8_t i=0; i<CHESS_ROWS; i++) {
     for (uint8_t j=0; j<CHESS_COLS; j++) {
-      if ((i < 4) || (j > 3)) continue; // TODO: Remove me
       if (!(occupancy_delta[i][j] & MOVEMENT_TYPE_ABSENT)) continue;
       
         get_algebraic_notation(i, j, src);
@@ -174,7 +185,6 @@ bool calculate_move_with_piece_removed(char move[]) {
   bool found = false;
   for (i=0; (i<CHESS_ROWS) && !found; i++) {
     for (j=0; (j<CHESS_COLS) && !found; j++) {
-      if ((i < 4) || (j > 3)) continue; // TODO: Remove me
       if (occupancy_delta[i][j] & MOVEMENT_TYPE_ABSENT) {
         get_algebraic_notation(i, j, src);
         Serial.print("src: ");
@@ -231,8 +241,8 @@ bool compute_move(char move[]) {
 void compute_delta() {
   for (uint8_t i=0; i<CHESS_ROWS; i++) {
     for (uint8_t j=0; j<CHESS_COLS; j++) {
-      if ((i < 4) || (j > 3)) continue; // TODO: Remove me
-      bool present = !mcp.digitalRead(pgm_read_byte_near(&sensor_pins[i][j]));
+      uint8_t id = board_id_lookup(i, j);
+      bool present = !mcp[id].digitalRead(pgm_read_byte_near(&sensor_pins[i][j]));
       bool occupied = occupancy_init[i][j];
       occupancy_delta[i][j] &= ~(MOVEMENT_TYPE_ABSENT | MOVEMENT_TYPE_PRESENT);
       if (occupied && !present) {
@@ -264,14 +274,37 @@ void scan_sensors() {
   }
 }
 
+uint8_t board_id_lookup(uint8_t row, uint8_t col) {
+  for (uint8_t id = 0; id < NUM_BOARDS; id++) {
+    if (row >= sensor_coords[id][X_START] && row <= sensor_coords[id][X_STOP] &&
+      col >= sensor_coords[id][Y_START] && col <= sensor_coords[id][Y_STOP]) {
+      return id;
+    }
+  }
+
+  return NUM_BOARDS; // invalid value. check against this for error
+}
+
 void sensor_init() {
-  if (!mcp.begin_I2C(0x27)) {
-    Serial.println("Error.");
-    return;
+  for (uint8_t id = 0; id < NUM_BOARDS; id++) {
+    uint16_t color = RED;
+    if (!mcp[id].begin_I2C(i2c_addr[id])) {
+      Serial.print("Sensor board not responding, id: ");
+
+    } else {
+      Serial.print("Sensor board OK, id: ");
+      color = GREEN;
+    }
+    Serial.println(id);
+    display_board_status(sensor_coords[id][X_START], sensor_coords[id][Y_START], sensor_coords[id][X_STOP], sensor_coords[id][Y_STOP], color);
+    delay(500);
+    display_board_status(0, 0, 7, 7, BLACK);
   }
 
   // configure pin for input with pull up
-  for (uint8_t i=0; i<16; i++) {
-    mcp.pinMode(i, INPUT_PULLUP);
+  for (uint8_t id = 0; id < NUM_BOARDS; id++) {
+    for (uint8_t pin = 0; pin < 16; pin++) {
+      mcp[id].pinMode(pin, INPUT_PULLUP);
+    }
   }
 }
