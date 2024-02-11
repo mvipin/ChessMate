@@ -8,8 +8,9 @@ from Rotary import Rotary
 from ChessSoft import ChessSoft
 
 # Setup serial
-ser = serial.Serial(port='/dev/ttyS0',baudrate=9600,parity=serial.PARITY_NONE,stopbits=serial.STOPBITS_ONE,bytesize=serial.EIGHTBITS)
+ser = serial.Serial(port='/dev/ttyAMA0',baudrate=9600,parity=serial.PARITY_NONE,stopbits=serial.STOPBITS_ONE,bytesize=serial.EIGHTBITS)
 ser.write("init\n".encode('utf8'))
+ser.flush()
 
 c = ChessSoft(ser)
 

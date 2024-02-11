@@ -30,7 +30,7 @@ class Menu:
         self.rowCount = 3
         self.menulevel = 0
 
-        self.oled = SSD1306.SSD1306_128_32(rst=None, gpio=GPIO)
+        self.oled = SSD1306.SSD1306_128_32(rst=None, gpio=GPIO, i2c_bus=11)
         self.oled.begin()
         self.oled.clear()
         self.oled.display()
