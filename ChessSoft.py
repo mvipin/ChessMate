@@ -14,6 +14,7 @@ class ChessSoft:
         self.depth = 0
         self.time = 0.0
         self.serial = ser
+        self.treset = False
 
     def random_player(self):
         move = random.choice(list(self.board.legal_moves))
@@ -228,9 +229,13 @@ class ChessSoft:
         self.update_skill(skill)
         self.update_players(human_white)
         self.board = chess.Board()
+        self.treset = False
 
     def reset_board(self):
         self.board = None
+
+    def reset_target(self):
+        self.treset = True
 
     def is_game_set(self):
         return self.board != None
@@ -250,6 +255,10 @@ class ChessSoft:
             print(result_str)
 
     def play_next_move(self):
+        if self.treset:
+            self.serial.write("reset\n".encode('utf8'))
+            self.board = None
+            return
         if self.board.turn == chess.WHITE:
             uci = self.player1()
         else:

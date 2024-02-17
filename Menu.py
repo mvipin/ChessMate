@@ -210,6 +210,9 @@ class Menu:
             text = str(self.submenuOption[2]) + " seconds"
         elif self.menuOption == 3:
             text = self.options2[self.submenuOption[3]]
+        elif self.menuOption == 5:
+            text = "resetting ..."
+            self.pychess.reset_target()
         elif self.menuOption == 0:
             new = True
             text = "USER(W): "
