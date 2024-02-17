@@ -42,11 +42,13 @@ def job():
     if c.is_game_set():
         if c.game_over():
             c.show_result()
-            return schedule.CancelJob
+            c.reset_board()
+            m.reset_menu()
+            m.set_selection(0)
+            return m.render()
         c.play_next_move()
 
-#schedule.every(5).seconds.do(job)
-schedule.every(1).seconds.do(job)
+schedule.every(0.1).seconds.do(job)
 
 while True:
     schedule.run_pending()

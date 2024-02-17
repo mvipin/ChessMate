@@ -229,6 +229,9 @@ class ChessSoft:
         self.update_players(human_white)
         self.board = chess.Board()
 
+    def reset_board(self):
+        self.board = None
+
     def is_game_set(self):
         return self.board != None
 

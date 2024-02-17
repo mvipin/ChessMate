@@ -15,20 +15,9 @@ class Menu:
         self.options3 = options3
         self.options4 = options4
         self.options5 = options5
-        self.menuOption = None # Menu
-        self.submenuOption = [
-                0, # unused (new game)
-                0, # Time - Computer
-                0, # Time - Human
-                0, # Color
-                0, # Level
-                0, # unused (shutdown)
-                0, # Rank
-                0, # File
-                0] # Confirm
         self.moveString = "Your Turn..."
         self.rowCount = 3
-        self.menulevel = 0
+        self.reset_menu()
 
         self.oled = SSD1306.SSD1306_128_32(rst=None, gpio=GPIO, i2c_bus=11)
         self.oled.begin()
@@ -45,6 +34,20 @@ class Menu:
         self.renderThread = None
         self.overrideMove = ""
         pychess.install_menu_ref(self)
+
+    def reset_menu(self):
+        self.menuOption = None # Menu
+        self.submenuOption = [
+                0, # unused (new game)
+                0, # Time - Computer
+                0, # Time - Human
+                0, # Color
+                0, # Level
+                0, # unused (shutdown)
+                0, # Rank
+                0, # File
+                0] # Confirm
+        self.menulevel = 0
 
     def set_options(self, options):
         self.options = options
