@@ -35,7 +35,7 @@ void display_count_up() {
     for (uint8_t j = 0; j < CHESS_COLS; j++) {
       display_pixels.drawPixel(i,j,ORANGE);
       display_pixels.show();
-      delay(100);
+      delay(50);
       display_pixels.drawPixel(i,j,BLACK);
       display_pixels.show();
     }

@@ -129,6 +129,11 @@ void process_cmd(char cmd[], uint8_t size) {
       }
     }
     lightup_display();
+  } else if (strcmp(tokens[idx],"reset") == 0) {
+    state = MOVE_INIT;
+    display_count_up();
+    reset_display();
+    lightup_display();
   }
 }
 
