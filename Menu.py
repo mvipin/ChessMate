@@ -17,11 +17,11 @@ class Menu:
         self.options5 = options5
         self.menuOption = None # Menu
         self.submenuOption = [
-                0, # Level
+                0, # unused (new game)
                 0, # Time - Computer
                 0, # Time - Human
                 0, # Color
-                0, # unused (new game)
+                0, # Level
                 0, # unused (shutdown)
                 0, # Rank
                 0, # File
@@ -72,8 +72,8 @@ class Menu:
             self.set_selection(0 if self.menuOption is None else
                     self.menuOption + by)
         else:
-            if self.menuOption == 0: # Level
-                self.set_subselection(self.submenuOption[0] + by,
+            if self.menuOption == 4: # Level
+                self.set_subselection(self.submenuOption[4] + by,
                         len(self.options1) - 1)
             elif self.menuOption == 1: # Time - Computer
                 self.set_subselection(self.submenuOption[1] + by, 30)
@@ -199,21 +199,21 @@ class Menu:
         new = False
         skill = 0
         human_first = True
-        if self.menuOption == 0:
-            text = self.options1[self.submenuOption[0]]
+        if self.menuOption == 4:
+            text = self.options1[self.submenuOption[4]]
         elif self.menuOption == 1:
             text = str(self.submenuOption[1]) + " seconds"
         elif self.menuOption == 2:
             text = str(self.submenuOption[2]) + " seconds"
         elif self.menuOption == 3:
             text = self.options2[self.submenuOption[3]]
-        elif self.menuOption == 4:
+        elif self.menuOption == 0:
             new = True
             text = "USER(W): "
             if self.submenuOption[3] == 1:
                 human_first = False
                 text = "COMP(W): "
-            skill = self.submenuOption[0]
+            skill = self.submenuOption[4]
             text = text + str(skill)
         elif self.menuOption == 6:
             text = self.options3[self.submenuOption[6]]

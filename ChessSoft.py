@@ -20,7 +20,7 @@ class ChessSoft:
         return move.uci()
 
     async def stockfish_player_async(self) -> None:
-        transport, engine = await chess.engine.popen_uci("stockfish")
+        transport, engine = await chess.engine.popen_uci("/usr/games/stockfish")
         result = await engine.play(self.board, chess.engine.Limit(
             time=self.time, depth=self.depth))
         uci = result.move.uci()
@@ -46,7 +46,7 @@ class ChessSoft:
         return ack
 
     async def get_hint_async(self) -> None:
-        transport, engine = await chess.engine.popen_uci("stockfish")
+        transport, engine = await chess.engine.popen_uci("/usr/games/stockfish")
         info = await engine.analyse(self.board, chess.engine.Limit(time=0.1))
         print("Score:", info["score"], info["pv"][0])
         await engine.quit()
@@ -181,23 +181,24 @@ class ChessSoft:
 
     def update_skill(self, skill):
         if skill <= 0:
-            self.depth = 5
-            self.time = 0.05
-        elif skill == 1:
-            self.depth = 5
-            self.time = 0.1
-        elif skill == 2:
-            self.depth = 5
-            self.time = 0.2
-        elif skill == 3:
-            self.depth = 8
-            self.time = 0.4
-        elif skill == 4:
-            self.depth = 13
-            self.time = 0.5
-        elif skill >= 5:
             self.depth = 22
             self.time = 1.0
+        elif skill == 1:
+            self.depth = 13
+            self.time = 0.5
+        elif skill == 2:
+            self.depth = 8
+            self.time = 0.4
+        elif skill == 3:
+            self.depth = 5
+            self.time = 0.2
+        elif skill == 4:
+            self.depth = 5
+            self.time = 0.1
+        elif skill >= 5:
+            self.depth = 5
+            self.time = 0.05
+        print("skill depth: " + str(self.depth) + ", skill time: " + str(self.time))
 
     def get_result(self):
         result = None
