@@ -5,7 +5,7 @@
 #include <math.h>
 #include <EEPROM.h>
 
-#define MULTISTEPPER_ENABLED //change to #undef if we want the motors to accelerate/decelerate
+#undef MULTISTEPPER_ENABLED //change to #undef if we want the motors to accelerate/decelerate
 
 #define STEPPER_X_STP_PIN 2
 #define STEPPER_Y_STP_PIN 3 
@@ -40,13 +40,13 @@
 #define EEPROM_START_ADDRESS 0
 #define ANGLE_DATA_SIZE 8 // bytes per square
 
-#define MAX_SPEED_X 500
-#define REDUCED_SPEED_X (MAX_SPEED_X >> 2)
+#define MAX_SPEED_X 2000
+#define REDUCED_SPEED_X (MAX_SPEED_X >> 1)
 #define HOMING_SPEED_X (-MAX_SPEED_X/2)
 #define ACCELERATION_X 1000
 
-#define MAX_SPEED_Y 1000
-#define REDUCED_SPEED_Y (MAX_SPEED_Y >> 2)
+#define MAX_SPEED_Y 4000
+#define REDUCED_SPEED_Y (MAX_SPEED_Y >> 1)
 #define HOMING_SPEED_Y (-MAX_SPEED_Y/2)
 #define ACCELERATION_Y 1000
 
@@ -56,10 +56,10 @@
 #define Z_MIN 250
 #define Z_MAX 2450
 
-#define STEPS_REF_X 440
-#define STEPS_REF_Y 7100
-#define STEPS_PER_DEGREE_X 32
-#define STEPS_PER_DEGREE_Y 51.7769
+#define STEPS_REF_X (440 * 2)
+#define STEPS_REF_Y (7100 * 2)
+#define STEPS_PER_DEGREE_X (32 * 2)
+#define STEPS_PER_DEGREE_Y (51.7769 * 2.0)
 #define STEPS_CNT(_deg, _dir) \
   ((_deg * STEPS_PER_DEGREE_##_dir) + STEPS_REF_##_dir)
 #define STEP_ZERO_ANGLE(_dir) \
@@ -409,6 +409,9 @@ bool handle_input(char input)
     } break;
     case 's': {
       store_angles_for_square();
+    } break;
+    case 'S': {
+      store_angles_for_square();
       current_square_index++;
       if (current_square_index >= 64) {
         Serial.println("Calibration complete!");
@@ -433,6 +436,62 @@ bool handle_input(char input)
   return true;
 }
 
+String get_square_input()
+{
+  Serial.println(F("Enter chess square (e.g., e2):"));
+  String sq = Serial.readStringUntil('\n');
+  while (sq.length() != 2) {
+    sq = Serial.readStringUntil('\n');
+  }
+  sq.trim(); // Remove any whitespace
+  Serial.println(sq);
+
+  return sq;
+}
+
+void calibrate_square_from_EEPROM(String sq)
+{
+  current_square_index = chess_notation_to_index(sq);
+
+  if (current_square_index == -1) {
+    Serial.println(F("Invalid move notation."));
+    return;
+  }
+
+  double angles[2];
+  int address = EEPROM_START_ADDRESS + current_square_index * ANGLE_DATA_SIZE;
+
+  EEPROM.get(address, angles);
+  angle1 = angles[0];
+  angle2 = angles[1];
+  Serial.print(F("Square index: "));
+  Serial.println(current_square_index);
+  Serial.print(F("Square angles: Theta1 = "));
+  Serial.print(angles[0], 6);
+  Serial.print(F(", Theta2 = "));
+  Serial.println(angles[1], 6);
+
+  stepperX.setMaxSpeed(REDUCED_SPEED_X);
+  stepperY.setMaxSpeed(REDUCED_SPEED_Y);
+#if 0
+  move_xy_to(angle1, angle2 - ((90-angle1)/1.879));
+#else
+  move_y_to(angle2 - ((90-angle1)/1.879));
+  move_x_to(angle1);
+#endif
+  move_z_to(Z_MIN);
+  while (true) {
+    if (Serial.available() > 0) {
+      char input = Serial.read();
+      if (!(handle_input(input))) {
+        break;
+      }
+    }
+  }
+  stepperX.setMaxSpeed(MAX_SPEED_X);
+  stepperY.setMaxSpeed(MAX_SPEED_Y);
+}
+
 void calibrate_board()
 {
   stepperX.setMaxSpeed(REDUCED_SPEED_X);
@@ -454,36 +513,27 @@ void calibrate_board()
   stepperY.setMaxSpeed(MAX_SPEED_Y);
 }
 
-void test_chess_square()
+void test_chess_square(String sq)
 {
-  Serial.println(F("Enter chess square (e.g., e2):"));
-
-  String move = Serial.readStringUntil('\n');
-  while (move.length() != 2) {
-    move = Serial.readStringUntil('\n');
-  }
-  move.trim(); // Remove any whitespace
-  Serial.println(move);
-
-  String source_notation = move.substring(0, 2);
-
-  int source_index = chess_notation_to_index(source_notation);
-
-  if (source_index == -1) {
+  int index = chess_notation_to_index(sq);
+  if (index == -1) {
     Serial.println(F("Invalid move notation."));
     return;
   }
 
-  double source_angles[2];
-  int source_address = EEPROM_START_ADDRESS + source_index * ANGLE_DATA_SIZE;
-
-  EEPROM.get(source_address, source_angles);
-
+  double angles[2];
+  int address = EEPROM_START_ADDRESS + index * ANGLE_DATA_SIZE;
+  EEPROM.get(address, angles);
   Serial.print(F("Source square angles: Theta1 = "));
-  Serial.print(source_angles[0], 6);
+  Serial.print(angles[0], 6);
   Serial.print(F(", Theta2 = "));
-  Serial.println(source_angles[1], 6);
-  move_xy_to(source_angles[0], source_angles[1] - ((90-source_angles[0])/1.879));
+  Serial.println(angles[1], 6);
+#if 0
+  move_xy_to(angles[0], angles[1] - ((90-angles[0])/1.879));
+#else
+  move_y_to(angles[1] - ((90-angles[0])/1.879));
+  move_x_to(angles[0]);
+#endif
   move_z_to(Z_MIN);
   delay(2000);
   move_z_to(Z_MAX);
@@ -568,10 +618,16 @@ void setup()
   pinMode(LIMIT_SWITCH_Z_PIN, INPUT_PULLUP);
 
   home_all();
-  //calibrate_board();
+  curl_up();
 }
 
 void loop()
 {
-  test_chess_square();
+  String sq = get_square_input();
+  calibrate_square_from_EEPROM(sq);
+  home_all();
+  curl_up();
+  test_chess_square(sq);
+  home_all();
+  curl_up();
 }
