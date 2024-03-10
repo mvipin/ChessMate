@@ -42,22 +42,26 @@
 
 #define MAX_SPEED_X 2000
 #define REDUCED_SPEED_X (MAX_SPEED_X >> 1)
-#define HOMING_SPEED_X (-MAX_SPEED_X/2)
+#define HOMING_SPEED_X (-MAX_SPEED_X)
+#define HOMING_REDUCED_SPEED_X (-(MAX_SPEED_X >> 3))
 #define ACCELERATION_X 1000
 
 #define MAX_SPEED_Y 4000
 #define REDUCED_SPEED_Y (MAX_SPEED_Y >> 1)
-#define HOMING_SPEED_Y (-MAX_SPEED_Y/2)
+#define HOMING_SPEED_Y (-MAX_SPEED_Y)
+#define HOMING_REDUCED_SPEED_Y (-(MAX_SPEED_Y >> 3))
 #define ACCELERATION_Y 1000
 
-#define MAX_SPEED_Z 4000
-#define HOMING_SPEED_Z -1000
+#define MAX_SPEED_Z 1000
+#define REDUCED_SPEED_Z (MAX_SPEED_Z >> 1)
+#define HOMING_SPEED_Z (-MAX_SPEED_Z)
+#define HOMING_REDUCED_SPEED_Z (-(MAX_SPEED_Z >> 2))
 #define ACCELERATION_Z 1000
 #define Z_MIN 250
 #define Z_MAX 2450
 
-#define STEPS_REF_X (440 * 2)
-#define STEPS_REF_Y (7100 * 2)
+#define STEPS_REF_X (410 * 2)
+#define STEPS_REF_Y (7000 * 2)
 #define STEPS_PER_DEGREE_X (32 * 2)
 #define STEPS_PER_DEGREE_Y (51.7769 * 2.0)
 #define STEPS_CNT(_deg, _dir) \
@@ -77,7 +81,7 @@ long multistepper_positions[2];
 Servo gripper;
 double angle1 = 0.0;
 double angle2 = 0.0;
-int current_square_index = 0; // From 0 to 63 for the 64 squares
+int current_square_index; // From 0 to 63 for the 64 squares
 
 struct grid {
   double x;
@@ -150,20 +154,71 @@ void move_z_to(long steps)
 
 void home_x()
 {
+  // Search mode - move quickly until the limit switch is triggered
   stepperX.setSpeed(HOMING_SPEED_X);
   while (!digitalRead(LIMIT_SWITCH_X_PIN)) {
     stepperX.runSpeed();
   }
+  stepperX.stop();
+
+  // Locate mode - move slowly away from the switch and then back to engage it slowly
+  stepperX.move(200); // Move 100 steps away
+  while (stepperX.distanceToGo() > 0) {
+    stepperX.run();
+  }
+  delay(100);
+  stepperX.setSpeed(HOMING_REDUCED_SPEED_X); // Move back towards the switch slowly
+  while (!digitalRead(LIMIT_SWITCH_X_PIN)) {
+    stepperX.runSpeed();
+  }
+  stepperX.stop();
+
+  // Pull-off motion - move away from the limit switch to disengage it
+  stepperX.move(50); // Move away from the switch to disengage
+  while (stepperX.distanceToGo() > 0) {
+    stepperX.run();
+  }
+
   stepperX.setCurrentPosition(0); // When limit switch pressed set position to 0 steps
 }
 
 void home_y()
 {
+ // Search mode - move quickly until the limit switch is triggered
   stepperY.setSpeed(HOMING_SPEED_Y);
   while (!digitalRead(LIMIT_SWITCH_Y_PIN)) {
     stepperY.runSpeed();
   }
+  stepperY.stop();
+
+  // Locate mode - move slowly away from the switch and then back to engage it slowly
+  stepperY.move(200); // Move 100 steps away
+  while (stepperY.distanceToGo() > 0) {
+    stepperY.run();
+  }
+  delay(100);
+  stepperY.setSpeed(HOMING_REDUCED_SPEED_Y); // Move back towards the switch slowly
+  while (!digitalRead(LIMIT_SWITCH_Y_PIN)) {
+    stepperY.runSpeed();
+  }
+  stepperY.stop();
+
+  // Pull-off motion - move away from the limit switch to disengage it
+  stepperY.move(50); // Move away from the switch to disengage
+  while (stepperY.distanceToGo() > 0) {
+    stepperY.run();
+  }
+
   stepperY.setCurrentPosition(0); // When limit switch pressed set position to 0 steps
+}
+
+void home_z()
+{
+  stepperZ.setSpeed(HOMING_SPEED_Z);
+  while (!digitalRead(LIMIT_SWITCH_Z_PIN)) {
+    stepperZ.runSpeed();
+  }
+  stepperZ.setCurrentPosition(0); // When limit switch pressed set position to 0 steps
 }
 
 void home_all()
@@ -174,15 +229,6 @@ void home_all()
   move_x_to(90);
   home_y();
   move_y_to(0);
-}
-
-void home_z()
-{
-  stepperZ.setSpeed(HOMING_SPEED_Z);
-  while (!digitalRead(LIMIT_SWITCH_Z_PIN)) {
-    stepperZ.runSpeed();
-  }
-  stepperZ.setCurrentPosition(0); // When limit switch pressed set position to 0 steps
 }
 
 void inverse_kinematics(double x, double y, double *theta1, double *theta2)
@@ -262,32 +308,6 @@ void curl_up()
   move_y_to(STEP_ZERO_ANGLE(Y) + ((STEP_ZERO_ANGLE(X) - 90)/1.879));
 }
 
-int chess_notation_to_index(const String& notation) {
-  if (notation.length() != 2) return -1;
-
-  // These arrays match the upside-down layout
-  const char* columns = "hgfedcba"; // Column identifiers, inverted
-  const char* rows = "87654321"; // Row identifiers, standard but in reverse order
-
-  char file = notation.charAt(0); // 'a' to 'h', but in reverse
-  char rank = notation.charAt(1); // '1' to '8', but in reverse
-
-  int file_index = -1;
-  int rank_index = -1;
-
-  // Find index in the reversed identifiers
-  for (int i = 0; i < 8; i++) {
-    if (columns[i] == file) file_index = i;
-    if (rows[i] == rank) rank_index = i;
-  }
-
-  if (file_index == -1 || rank_index == -1) {
-    return -1; // Notation is out of bounds
-  }
-
-  return rank_index * 8 + file_index;
-}
-
 void dump_eeprom()
 {
   float angles[2];
@@ -324,6 +344,48 @@ void adjust_angle(double* angle, double step)
   // Add bounds checking for angles if needed
 }
 
+int chess_notation_to_index(const String& notation)
+{
+  if (notation.length() != 2) return -1;
+
+  // These arrays match the upside-down layout a.k.a robot's perspective
+  const char* columns = "hgfedcba"; // Column identifiers, inverted
+  const char* rows = "87654321"; // Row identifiers, standard but in reverse order
+
+  char file = notation.charAt(0); // 'a' to 'h', but in reverse
+  char rank = notation.charAt(1); // '1' to '8', but in reverse
+
+  int file_index = -1;
+  int rank_index = -1;
+
+  // Find index in the reversed identifiers
+  for (int i = 0; i < 8; i++) {
+    if (columns[i] == file) file_index = i;
+    if (rows[i] == rank) rank_index = i;
+  }
+
+  if (file_index == -1 || rank_index == -1) {
+    return -1; // Notation is out of bounds
+  }
+
+  return rank_index * 8 + file_index;
+}
+
+String chess_index_to_notation(int index)
+{
+  // Handling it this way because the board is upside down from robot's perspective
+  const char* columns = "hgfedcba"; // Inverted order
+  const char* rows = "12345678"; // Standard order, but will be accessed in reverse
+
+  // Calculate file (column) and rank (row) from the currentSquareIndex
+  int file_index = index % 8; // Column
+  int rank_index = 7 - (index / 8); // Row, inverted
+
+  // Construct the square notation
+  char notation[3] = {columns[file_index], rows[rank_index], '\0'}; // Null-terminated string
+  return notation;
+}
+
 void xy_lookup(uint8_t index, double *x, double *y)
 {
   // Calculate row and column from index
@@ -344,80 +406,62 @@ void xy_lookup(uint8_t index, double *x, double *y)
   *y = y_lower * (1 - y_fraction) + y_upper * y_fraction;
 }
 
-void prompt_next_square()
+void prompt_next_square(bool eeprom)
 {
-  // Handling it this way because the board is upside down from robot's perspective
-  const char* columns = "hgfedcba"; // Inverted order
-  const char* rows = "12345678"; // Standard order, but will be accessed in reverse
-
-  // Calculate file (column) and rank (row) from the currentSquareIndex
-  int file_index = current_square_index % 8; // Column
-  int rank_index = 7 - (current_square_index / 8); // Row, inverted
-
-  // Construct the square notation
-  char square_notation[3] = {columns[file_index], rows[rank_index], '\0'}; // Null-terminated string
-
-  // Prompt the user
+  String notation = chess_index_to_notation(current_square_index);
   Serial.print("Please jog to the square ");
-  Serial.print(square_notation);
+  Serial.print(notation);
   Serial.println(" for adjustment. Press 's' to save when done.");
-
-  // Nove the gripper to the desired position
-  double x, y, theta1, theta2;
-  xy_lookup(current_square_index, &x, &y);
-  inverse_kinematics(x, y, &theta1, &theta2);
-  move_xy_to(theta1, theta2 - ((90-theta1)/1.879));
-  angle1 = theta1;
-  angle2 = theta2;
+  calibrate_square(notation, eeprom);
 }
 
-bool handle_input(char input)
+bool handle_input(char input, bool eeprom)
 {
-  // Increase angle1
+  bool adjust = false;
   switch(input) {
     case 'L': {
       adjust_angle(&angle1, CAL_LARGE_STEP);
-      move_xy_to(angle1, angle2 - ((90-angle1)/1.879));
+      adjust = true;
     } break;
     case 'R': {
       adjust_angle(&angle1, -CAL_LARGE_STEP);
-      move_xy_to(angle1, angle2 - ((90-angle1)/1.879));
+      adjust = true;
     } break;
     case 'l': {
       adjust_angle(&angle1, CAL_SMALL_STEP);
-      move_xy_to(angle1, angle2 - ((90-angle1)/1.879));
+      adjust = true;
     } break;
     case 'r': {
       adjust_angle(&angle1, -CAL_SMALL_STEP);
-      move_xy_to(angle1, angle2 - ((90-angle1)/1.879));
+      adjust = true;
     } break;
     case 'D': {
       adjust_angle(&angle2, CAL_LARGE_STEP);
-      move_xy_to(angle1, angle2 - ((90-angle1)/1.879));
+      adjust = true;
     } break;
     case 'U': {
       adjust_angle(&angle2, -CAL_LARGE_STEP);
-      move_xy_to(angle1, angle2 - ((90-angle1)/1.879));
+      adjust = true;
     } break;
     case 'd': {
       adjust_angle(&angle2, CAL_SMALL_STEP);
-      move_xy_to(angle1, angle2 - ((90-angle1)/1.879));
+      adjust = true;
     } break;
     case 'u': {
       adjust_angle(&angle2, -CAL_SMALL_STEP);
-      move_xy_to(angle1, angle2 - ((90-angle1)/1.879));
+      adjust = true;
     } break;
     case 's': {
       store_angles_for_square();
     } break;
-    case 'S': {
-      store_angles_for_square();
+    case 'n': {
+      home_all();
       current_square_index++;
       if (current_square_index >= 64) {
         Serial.println("Calibration complete!");
         current_square_index = 0; // Reset or end calibration
       } else {
-        prompt_next_square();
+        prompt_next_square(eeprom);
       }
     } break;
     case 'q': {
@@ -427,29 +471,19 @@ bool handle_input(char input)
     } break;
   }
   
-  // Output current angles
-  Serial.print("Angle1: ");
-  Serial.print(angle1);
-  Serial.print(", Angle2: ");
-  Serial.println(angle2);
+  if (adjust) {
+    move_xy_to(angle1, angle2 - ((90-angle1)/1.879));
+    // Output current angles
+    Serial.print("Angle1: ");
+    Serial.print(angle1);
+    Serial.print(", Angle2: ");
+    Serial.println(angle2);
+  }
 
   return true;
 }
 
-String get_square_input()
-{
-  Serial.println(F("Enter chess square (e.g., e2):"));
-  String sq = Serial.readStringUntil('\n');
-  while (sq.length() != 2) {
-    sq = Serial.readStringUntil('\n');
-  }
-  sq.trim(); // Remove any whitespace
-  Serial.println(sq);
-
-  return sq;
-}
-
-void calibrate_square_from_EEPROM(String sq)
+void calibrate_square(String sq, bool eeprom)
 {
   current_square_index = chess_notation_to_index(sq);
 
@@ -458,32 +492,36 @@ void calibrate_square_from_EEPROM(String sq)
     return;
   }
 
-  double angles[2];
-  int address = EEPROM_START_ADDRESS + current_square_index * ANGLE_DATA_SIZE;
+  // Get the angles from EEPROM or IK
+  if (eeprom) {
+    double angles[2];
+    int address = EEPROM_START_ADDRESS + current_square_index * ANGLE_DATA_SIZE;
 
-  EEPROM.get(address, angles);
-  angle1 = angles[0];
-  angle2 = angles[1];
-  Serial.print(F("Square index: "));
-  Serial.println(current_square_index);
-  Serial.print(F("Square angles: Theta1 = "));
-  Serial.print(angles[0], 6);
-  Serial.print(F(", Theta2 = "));
-  Serial.println(angles[1], 6);
+    EEPROM.get(address, angles);
+    Serial.print(F("Square index: "));
+    Serial.println(current_square_index);
+    Serial.print(F("Square angles: Theta1 = "));
+    Serial.print(angles[0], 6);
+    Serial.print(F(", Theta2 = "));
+    Serial.println(angles[1], 6);
+    angle1 = angles[0];
+    angle2 = angles[1];
+  } else {
+    double x, y, theta1, theta2;
+    xy_lookup(current_square_index, &x, &y);
+    inverse_kinematics(x, y, &theta1, &theta2);
+    angle1 = theta1;
+    angle2 = theta2;
+  }
 
   stepperX.setMaxSpeed(REDUCED_SPEED_X);
   stepperY.setMaxSpeed(REDUCED_SPEED_Y);
-#if 0
   move_xy_to(angle1, angle2 - ((90-angle1)/1.879));
-#else
-  move_y_to(angle2 - ((90-angle1)/1.879));
-  move_x_to(angle1);
-#endif
   move_z_to(Z_MIN);
   while (true) {
     if (Serial.available() > 0) {
       char input = Serial.read();
-      if (!(handle_input(input))) {
+      if (!(handle_input(input, eeprom))) {
         break;
       }
     }
@@ -492,28 +530,17 @@ void calibrate_square_from_EEPROM(String sq)
   stepperY.setMaxSpeed(MAX_SPEED_Y);
 }
 
-void calibrate_board()
+void calibrate_board(bool eeprom)
 {
-  stepperX.setMaxSpeed(REDUCED_SPEED_X);
-  stepperY.setMaxSpeed(REDUCED_SPEED_Y);
   gripper_open();
   delay(2000);
   gripper_close();
-  prompt_next_square();
-  move_z_to(Z_MIN);
-  while (true) {
-    if (Serial.available() > 0) {
-      char input = Serial.read();
-      if (!(handle_input(input))) {
-        break;
-      }
-    }
-  }
-  stepperX.setMaxSpeed(MAX_SPEED_X);
-  stepperY.setMaxSpeed(MAX_SPEED_Y);
+
+  current_square_index = 0;
+  prompt_next_square(eeprom);
 }
 
-void test_chess_square(String sq)
+void test_square(String sq)
 {
   int index = chess_notation_to_index(sq);
   if (index == -1) {
@@ -528,18 +555,24 @@ void test_chess_square(String sq)
   Serial.print(angles[0], 6);
   Serial.print(F(", Theta2 = "));
   Serial.println(angles[1], 6);
-#if 0
   move_xy_to(angles[0], angles[1] - ((90-angles[0])/1.879));
-#else
-  move_y_to(angles[1] - ((90-angles[0])/1.879));
-  move_x_to(angles[0]);
-#endif
   move_z_to(Z_MIN);
   delay(2000);
   move_z_to(Z_MAX);
 }
 
-void test_chess_moves()
+void test_move(String move)
+{
+  // Start square
+  String notation = move.substring(0, 2);
+  test_square(notation);
+
+  // End square
+  notation = move.substring(2, 4);
+  test_square(notation);
+}
+
+String get_move_input()
 {
   Serial.println(F("Enter chess move (e.g., e2e4):"));
 
@@ -549,42 +582,19 @@ void test_chess_moves()
   }
   move.trim(); // Remove any whitespace
   Serial.println(move);
+}
 
-  String source_notation = move.substring(0, 2);
-  String destination_notation = move.substring(2, 4);
-
-  int source_index = chess_notation_to_index(source_notation);
-  int destination_index = chess_notation_to_index(destination_notation);
-
-  if (source_index == -1 || destination_index == -1) {
-    Serial.println(F("Invalid move notation."));
-    return;
+String get_square_input()
+{
+  Serial.println(F("Enter chess square (e.g., e2):"));
+  String sq = Serial.readStringUntil('\n');
+  while (sq.length() != 2) {
+    sq = Serial.readStringUntil('\n');
   }
+  sq.trim(); // Remove any whitespace
+  Serial.println(sq);
 
-  double source_angles[2];
-  double destination_angles[2];
-  int source_address = EEPROM_START_ADDRESS + source_index * ANGLE_DATA_SIZE;
-  int destination_address = EEPROM_START_ADDRESS + destination_index * ANGLE_DATA_SIZE;
-
-  EEPROM.get(source_address, source_angles);
-  EEPROM.get(destination_address, destination_angles);
-
-  Serial.print(F("Source square angles: Theta1 = "));
-  Serial.print(source_angles[0], 6);
-  Serial.print(F(", Theta2 = "));
-  Serial.println(source_angles[1], 6);
-  move_xy_to(source_angles[0], source_angles[1] - ((90-source_angles[0])/1.879));
-  move_z_to(Z_MIN);
-  delay(2000);
-  move_z_to(Z_MAX);
-  Serial.print(F("Destination square angles: Theta1 = "));
-  Serial.print(destination_angles[0], 6);
-  Serial.print(F(", Theta2 = "));
-  Serial.println(destination_angles[1], 6);
-  move_xy_to(destination_angles[0], destination_angles[1] - ((90-destination_angles[0])/1.879));
-  move_z_to(Z_MIN);
-  delay(2000);
-  move_z_to(Z_MAX);
+  return sq;
 }
 
 void setup()
@@ -623,11 +633,16 @@ void setup()
 
 void loop()
 {
-  String sq = get_square_input();
-  calibrate_square_from_EEPROM(sq);
-  home_all();
-  curl_up();
-  test_chess_square(sq);
-  home_all();
-  curl_up();
+  test_square("a1");
+  //String sq = get_square_input();
+  //calibrate_square(sq. true);
+  //home_all();
+  //curl_up();
+  //const char* squaresToTest[] = {"a1", "a2", "a3", "a4", "a5", "a6", "a7"};
+  //const int numberOfSquares = sizeof(squaresToTest) / sizeof(squaresToTest[0]);
+  //for (int i = 0; i < numberOfSquares; i++) {
+  //  test_square(squaresToTest[i]);
+  //}
+  //home_all();
+  //curl_up();
 }
