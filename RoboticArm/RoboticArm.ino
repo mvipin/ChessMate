@@ -40,12 +40,12 @@
 #define EEPROM_START_ADDRESS 0
 #define ANGLE_DATA_SIZE 8 // bytes per square
 
-#define MAX_SPEED_X 2000
+#define MAX_SPEED_X 500
 #define REDUCED_SPEED_X (MAX_SPEED_X >> 2)
 #define HOMING_SPEED_X (-MAX_SPEED_X/2)
 #define ACCELERATION_X 1000
 
-#define MAX_SPEED_Y 4000
+#define MAX_SPEED_Y 1000
 #define REDUCED_SPEED_Y (MAX_SPEED_Y >> 2)
 #define HOMING_SPEED_Y (-MAX_SPEED_Y/2)
 #define ACCELERATION_Y 1000
@@ -454,7 +454,43 @@ void calibrate_board()
   stepperY.setMaxSpeed(MAX_SPEED_Y);
 }
 
-void test_chess_moves() {
+void test_chess_square()
+{
+  Serial.println(F("Enter chess square (e.g., e2):"));
+
+  String move = Serial.readStringUntil('\n');
+  while (move.length() != 2) {
+    move = Serial.readStringUntil('\n');
+  }
+  move.trim(); // Remove any whitespace
+  Serial.println(move);
+
+  String source_notation = move.substring(0, 2);
+
+  int source_index = chess_notation_to_index(source_notation);
+
+  if (source_index == -1) {
+    Serial.println(F("Invalid move notation."));
+    return;
+  }
+
+  double source_angles[2];
+  int source_address = EEPROM_START_ADDRESS + source_index * ANGLE_DATA_SIZE;
+
+  EEPROM.get(source_address, source_angles);
+
+  Serial.print(F("Source square angles: Theta1 = "));
+  Serial.print(source_angles[0], 6);
+  Serial.print(F(", Theta2 = "));
+  Serial.println(source_angles[1], 6);
+  move_xy_to(source_angles[0], source_angles[1] - ((90-source_angles[0])/1.879));
+  move_z_to(Z_MIN);
+  delay(2000);
+  move_z_to(Z_MAX);
+}
+
+void test_chess_moves()
+{
   Serial.println(F("Enter chess move (e.g., e2e4):"));
 
   String move = Serial.readStringUntil('\n');
@@ -532,9 +568,10 @@ void setup()
   pinMode(LIMIT_SWITCH_Z_PIN, INPUT_PULLUP);
 
   home_all();
+  //calibrate_board();
 }
 
 void loop()
 {
-  test_chess_moves();
+  test_chess_square();
 }
