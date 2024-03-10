@@ -262,6 +262,32 @@ void curl_up()
   move_y_to(STEP_ZERO_ANGLE(Y) + ((STEP_ZERO_ANGLE(X) - 90)/1.879));
 }
 
+int chess_notation_to_index(const String& notation) {
+  if (notation.length() != 2) return -1;
+
+  // These arrays match the upside-down layout
+  const char* columns = "hgfedcba"; // Column identifiers, inverted
+  const char* rows = "87654321"; // Row identifiers, standard but in reverse order
+
+  char file = notation.charAt(0); // 'a' to 'h', but in reverse
+  char rank = notation.charAt(1); // '1' to '8', but in reverse
+
+  int file_index = -1;
+  int rank_index = -1;
+
+  // Find index in the reversed identifiers
+  for (int i = 0; i < 8; i++) {
+    if (columns[i] == file) file_index = i;
+    if (rows[i] == rank) rank_index = i;
+  }
+
+  if (file_index == -1 || rank_index == -1) {
+    return -1; // Notation is out of bounds
+  }
+
+  return rank_index * 8 + file_index;
+}
+
 void dump_eeprom()
 {
   float angles[2];
@@ -428,6 +454,53 @@ void calibrate_board()
   stepperY.setMaxSpeed(MAX_SPEED_Y);
 }
 
+void test_chess_moves() {
+  Serial.println(F("Enter chess move (e.g., e2e4):"));
+
+  String move = Serial.readStringUntil('\n');
+  while (move.length() != 4) {
+    move = Serial.readStringUntil('\n');
+  }
+  move.trim(); // Remove any whitespace
+  Serial.println(move);
+
+  String source_notation = move.substring(0, 2);
+  String destination_notation = move.substring(2, 4);
+
+  int source_index = chess_notation_to_index(source_notation);
+  int destination_index = chess_notation_to_index(destination_notation);
+
+  if (source_index == -1 || destination_index == -1) {
+    Serial.println(F("Invalid move notation."));
+    return;
+  }
+
+  double source_angles[2];
+  double destination_angles[2];
+  int source_address = EEPROM_START_ADDRESS + source_index * ANGLE_DATA_SIZE;
+  int destination_address = EEPROM_START_ADDRESS + destination_index * ANGLE_DATA_SIZE;
+
+  EEPROM.get(source_address, source_angles);
+  EEPROM.get(destination_address, destination_angles);
+
+  Serial.print(F("Source square angles: Theta1 = "));
+  Serial.print(source_angles[0], 6);
+  Serial.print(F(", Theta2 = "));
+  Serial.println(source_angles[1], 6);
+  move_xy_to(source_angles[0], source_angles[1] - ((90-source_angles[0])/1.879));
+  move_z_to(Z_MIN);
+  delay(2000);
+  move_z_to(Z_MAX);
+  Serial.print(F("Destination square angles: Theta1 = "));
+  Serial.print(destination_angles[0], 6);
+  Serial.print(F(", Theta2 = "));
+  Serial.println(destination_angles[1], 6);
+  move_xy_to(destination_angles[0], destination_angles[1] - ((90-destination_angles[0])/1.879));
+  move_z_to(Z_MIN);
+  delay(2000);
+  move_z_to(Z_MAX);
+}
+
 void setup()
 {
   Serial.begin(9600);
@@ -459,10 +532,9 @@ void setup()
   pinMode(LIMIT_SWITCH_Z_PIN, INPUT_PULLUP);
 
   home_all();
-
-  calibrate_board();
 }
 
 void loop()
 {
+  test_chess_moves();
 }
