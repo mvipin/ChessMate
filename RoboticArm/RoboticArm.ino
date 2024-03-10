@@ -91,27 +91,12 @@ struct grid {
 
 void gripper_close()
 {
-#if 0
-  for (int pos = GRIPPER_OPEN_ANGLE; pos <= GRIPPER_CLOSE_ANGLE; pos += 1) { // goes from 0 degrees to 180 degrees
-    // in steps of 1 degree
-    gripper.write(pos);              // tell servo to go to position in variable 'pos'
-    delay(15);                       // waits 15ms for the servo to reach the position
-  }
-#else
   gripper.write(GRIPPER_CLOSE_ANGLE); 
-#endif
 }
 
 void gripper_open()
 {
-#if 0
-  for (int pos = GRIPPER_CLOSE_ANGLE; pos >= GRIPPER_OPEN_ANGLE; pos -= 1) { // goes from 180 degrees to 0 degrees
-    gripper.write(pos);              // tell servo to go to position in variable 'pos'
-    delay(15);                       // waits 15ms for the servo to reach the position
-  }
-#else
   gripper.write(GRIPPER_OPEN_ANGLE);
-#endif
 }
 
 void move_xy_to(double x_deg, double y_deg)
@@ -335,31 +320,23 @@ void xy_lookup(uint8_t index, double *x, double *y)
 
 void prompt_next_square()
 {
-#if 0
-  int row = current_square_index / 8;
-  char col = (current_square_index % 8) + 'a';
-  Serial.print("Move to square ");
-  Serial.print(col);
-  Serial.print(row + 1); // Chess rows start from 1, not 0
-  Serial.println(" for adjustment. Press 's' to save when done.");
-#else
   // Handling it this way because the board is upside down from robot's perspective
-  // Chess board definitions
   const char* columns = "hgfedcba"; // Inverted order
   const char* rows = "12345678"; // Standard order, but will be accessed in reverse
 
   // Calculate file (column) and rank (row) from the currentSquareIndex
-  int fileIndex = current_square_index % 8; // Column
-  int rankIndex = 7 - (current_square_index / 8); // Row, inverted
+  int file_index = current_square_index % 8; // Column
+  int rank_index = 7 - (current_square_index / 8); // Row, inverted
 
   // Construct the square notation
-  char squareNotation[3] = {columns[fileIndex], rows[rankIndex], '\0'}; // Null-terminated string
+  char square_notation[3] = {columns[file_index], rows[rank_index], '\0'}; // Null-terminated string
 
   // Prompt the user
   Serial.print("Please jog to the square ");
-  Serial.print(squareNotation);
+  Serial.print(square_notation);
   Serial.println(" for adjustment. Press 's' to save when done.");
-#endif
+
+  // Nove the gripper to the desired position
   double x, y, theta1, theta2;
   xy_lookup(current_square_index, &x, &y);
   inverse_kinematics(x, y, &theta1, &theta2);
