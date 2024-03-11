@@ -52,18 +52,19 @@
 #define HOMING_REDUCED_SPEED_Y (-(MAX_SPEED_Y >> 3))
 #define ACCELERATION_Y 1000
 
-#define MAX_SPEED_Z 1000
+#define MAX_SPEED_Z 700
 #define REDUCED_SPEED_Z (MAX_SPEED_Z >> 1)
 #define HOMING_SPEED_Z (-MAX_SPEED_Z)
 #define HOMING_REDUCED_SPEED_Z (-(MAX_SPEED_Z >> 2))
-#define ACCELERATION_Z 1000
-#define Z_MIN 250
-#define Z_MAX 2450
+#define ACCELERATION_Z 500
+#define Z_MIN 400 // 250
+#define Z_MAX 1900 // 2450
 
-#define STEPS_REF_X (410 * 2)
-#define STEPS_REF_Y (7000 * 2)
-#define STEPS_PER_DEGREE_X (32 * 2)
-#define STEPS_PER_DEGREE_Y (51.7769 * 2.0)
+#define PULLEY_RATIO 1.00 //1.879
+#define STEPS_REF_X 820
+#define STEPS_REF_Y 7720
+#define STEPS_PER_DEGREE_X 64.0f // 72/20 (gear down ratio) * 200 (steps per revolution) * 32 (microstepping) / 360 (degrees)
+#define STEPS_PER_DEGREE_Y 55.11f // 62/20 (gear down ratio 1) * 62/62 (gear down ratio 2) * 200 * 32 / 360
 #define STEPS_CNT(_deg, _dir) \
   ((_deg * STEPS_PER_DEGREE_##_dir) + STEPS_REF_##_dir)
 #define STEP_ZERO_ANGLE(_dir) \
@@ -256,7 +257,7 @@ void four_corner_test()
 
   for (int i=0; i<4; i++) {
     inverse_kinematics(corner[i].x, corner[i].y, &theta1, &theta2);
-    move_xy_to(theta1, theta2 - ((90-theta1)/1.879));
+    move_xy_to(theta1, theta2 - ((90-theta1)/PULLEY_RATIO));
     gripper_close();
     move_z_to(Z_MIN);
     gripper_open();
@@ -276,7 +277,7 @@ void up_down_test()
   Serial.println(t1-t0);
   delay(500);
   t0 = millis();
-  move_z_to(0);
+  move_z_to(Z_MIN);
   t1 = millis();
   Serial.print("Down: ");
   Serial.println(t1-t0);
@@ -288,12 +289,12 @@ void extraction_test()
   static uint8_t iteration = 0;
   uint8_t first = iteration + 1;
   uint8_t second = ((iteration + 1) % 2) + 1;
-  move_xy_to(corner[first].x, (-(90-corner[first].x)/1.879) + (180-corner[first].y));
+  move_xy_to(corner[first].x, (-(90-corner[first].x)/PULLEY_RATIO) + (180-corner[first].y));
   gripper_open();
   move_z_to(Z_MIN);
   gripper_close();
   move_z_to(Z_MAX);
-  move_xy_to(corner[second].x, (-(90-corner[second].x)/1.879) + (180-corner[second].y));
+  move_xy_to(corner[second].x, (-(90-corner[second].x)/PULLEY_RATIO) + (180-corner[second].y));
   move_z_to(Z_MIN);
   gripper_open();
   move_z_to(Z_MAX);
@@ -305,7 +306,13 @@ void curl_up()
 {
   move_y_to(0);
   move_x_to(STEP_ZERO_ANGLE(X));
-  move_y_to(STEP_ZERO_ANGLE(Y) + ((STEP_ZERO_ANGLE(X) - 90)/1.879));
+  move_y_to(STEP_ZERO_ANGLE(Y) + ((STEP_ZERO_ANGLE(X) - 90)/PULLEY_RATIO));
+}
+
+void straight_up()
+{
+  move_y_to(0);
+  move_x_to(90);
 }
 
 void dump_eeprom()
@@ -455,7 +462,6 @@ bool handle_input(char input, bool eeprom)
       store_angles_for_square();
     } break;
     case 'n': {
-      home_all();
       current_square_index++;
       if (current_square_index >= 64) {
         Serial.println("Calibration complete!");
@@ -469,10 +475,19 @@ bool handle_input(char input, bool eeprom)
       dump_eeprom();
       return false;
     } break;
+    case 'z': {
+      home_z();
+      move_z_to(Z_MIN);
+    } break;
+    case 'g': {
+      gripper_open();
+      delay(2000);
+      gripper_close();
+    }
   }
   
   if (adjust) {
-    move_xy_to(angle1, angle2 - ((90-angle1)/1.879));
+    move_xy_to(angle1, angle2 - ((90-angle1)/PULLEY_RATIO));
     // Output current angles
     Serial.print("Angle1: ");
     Serial.print(angle1);
@@ -516,7 +531,7 @@ void calibrate_square(String sq, bool eeprom)
 
   stepperX.setMaxSpeed(REDUCED_SPEED_X);
   stepperY.setMaxSpeed(REDUCED_SPEED_Y);
-  move_xy_to(angle1, angle2 - ((90-angle1)/1.879));
+  move_xy_to(angle1, angle2 - ((90-angle1)/PULLEY_RATIO));
   move_z_to(Z_MIN);
   while (true) {
     if (Serial.available() > 0) {
@@ -542,6 +557,7 @@ void calibrate_board(bool eeprom)
 
 void test_square(String sq)
 {
+  Serial.print("Square: "); Serial.println(sq);
   int index = chess_notation_to_index(sq);
   if (index == -1) {
     Serial.println(F("Invalid move notation."));
@@ -555,7 +571,7 @@ void test_square(String sq)
   Serial.print(angles[0], 6);
   Serial.print(F(", Theta2 = "));
   Serial.println(angles[1], 6);
-  move_xy_to(angles[0], angles[1] - ((90-angles[0])/1.879));
+  move_xy_to(angles[0], angles[1] - ((90-angles[0])/PULLEY_RATIO));
   move_z_to(Z_MIN);
   delay(2000);
   move_z_to(Z_MAX);
@@ -582,6 +598,7 @@ String get_move_input()
   }
   move.trim(); // Remove any whitespace
   Serial.println(move);
+  return move;
 }
 
 String get_square_input()
@@ -618,7 +635,6 @@ void setup()
   stepperZ.setAcceleration(ACCELERATION_Z);
   stepperZ.setPinsInverted(false, false, true);
   stepperZ.setEnablePin(STEPPER_ENABLE_PIN);
-  stepperZ.setSpeed(MAX_SPEED_Z);
 
   multistepper.addStepper(stepperX);
   multistepper.addStepper(stepperY);
@@ -627,22 +643,20 @@ void setup()
   pinMode(LIMIT_SWITCH_Y_PIN, INPUT_PULLUP);
   pinMode(LIMIT_SWITCH_Z_PIN, INPUT_PULLUP);
 
+  //dump_eeprom();
   home_all();
-  curl_up();
+  //curl_up();
+#if 0
+  const char* squaresToTest[] = {"a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2"};
+  const int numberOfSquares = sizeof(squaresToTest) / sizeof(squaresToTest[0]);
+  for (int i = 0; i < numberOfSquares; i++) {
+    calibrate_square(squaresToTest[i], true);
+  }
+#endif
 }
 
 void loop()
 {
-  test_square("a1");
-  //String sq = get_square_input();
-  //calibrate_square(sq. true);
-  //home_all();
-  //curl_up();
-  //const char* squaresToTest[] = {"a1", "a2", "a3", "a4", "a5", "a6", "a7"};
-  //const int numberOfSquares = sizeof(squaresToTest) / sizeof(squaresToTest[0]);
-  //for (int i = 0; i < numberOfSquares; i++) {
-  //  test_square(squaresToTest[i]);
-  //}
-  //home_all();
-  //curl_up();
+  //test_move(get_move_input());
+  up_down_test();
 }
