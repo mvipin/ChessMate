@@ -46,7 +46,7 @@
 #define HOMING_REDUCED_SPEED_X (-(MAX_SPEED_X >> 3))
 #define ACCELERATION_X 1000
 
-#define MAX_SPEED_Y 4000
+#define MAX_SPEED_Y 3000
 #define REDUCED_SPEED_Y (MAX_SPEED_Y >> 1)
 #define HOMING_SPEED_Y (-MAX_SPEED_Y)
 #define HOMING_REDUCED_SPEED_Y (-(MAX_SPEED_Y >> 3))
@@ -57,7 +57,7 @@
 #define HOMING_SPEED_Z (-MAX_SPEED_Z)
 #define HOMING_REDUCED_SPEED_Z (-(MAX_SPEED_Z >> 2))
 #define ACCELERATION_Z 500
-#define Z_MIN 400 // 250
+#define Z_MIN 0 // 250
 #define Z_MAX 1900 // 2450
 
 #define PULLEY_RATIO 1.00 //1.879
@@ -284,35 +284,11 @@ void up_down_test()
   delay(500);
 }
 
-void extraction_test()
-{
-  static uint8_t iteration = 0;
-  uint8_t first = iteration + 1;
-  uint8_t second = ((iteration + 1) % 2) + 1;
-  move_xy_to(corner[first].x, (-(90-corner[first].x)/PULLEY_RATIO) + (180-corner[first].y));
-  gripper_open();
-  move_z_to(Z_MIN);
-  gripper_close();
-  move_z_to(Z_MAX);
-  move_xy_to(corner[second].x, (-(90-corner[second].x)/PULLEY_RATIO) + (180-corner[second].y));
-  move_z_to(Z_MIN);
-  gripper_open();
-  move_z_to(Z_MAX);
-  gripper_close();
-  iteration = (iteration + 1) % 2; 
-}
-
 void curl_up()
 {
   move_y_to(0);
   move_x_to(STEP_ZERO_ANGLE(X));
   move_y_to(STEP_ZERO_ANGLE(Y) + ((STEP_ZERO_ANGLE(X) - 90)/PULLEY_RATIO));
-}
-
-void straight_up()
-{
-  move_y_to(0);
-  move_x_to(90);
 }
 
 void dump_eeprom()
@@ -555,39 +531,6 @@ void calibrate_board(bool eeprom)
   prompt_next_square(eeprom);
 }
 
-void test_square(String sq)
-{
-  Serial.print("Square: "); Serial.println(sq);
-  int index = chess_notation_to_index(sq);
-  if (index == -1) {
-    Serial.println(F("Invalid move notation."));
-    return;
-  }
-
-  double angles[2];
-  int address = EEPROM_START_ADDRESS + index * ANGLE_DATA_SIZE;
-  EEPROM.get(address, angles);
-  Serial.print(F("Source square angles: Theta1 = "));
-  Serial.print(angles[0], 6);
-  Serial.print(F(", Theta2 = "));
-  Serial.println(angles[1], 6);
-  move_xy_to(angles[0], angles[1] - ((90-angles[0])/PULLEY_RATIO));
-  move_z_to(Z_MIN);
-  delay(2000);
-  move_z_to(Z_MAX);
-}
-
-void test_move(String move)
-{
-  // Start square
-  String notation = move.substring(0, 2);
-  test_square(notation);
-
-  // End square
-  notation = move.substring(2, 4);
-  test_square(notation);
-}
-
 String get_move_input()
 {
   Serial.println(F("Enter chess move (e.g., e2e4):"));
@@ -612,6 +555,67 @@ String get_square_input()
   Serial.println(sq);
 
   return sq;
+}
+
+void move_to_square(String sq)
+{
+  int index = chess_notation_to_index(sq);
+  if (index == -1) {
+    Serial.println(F("Invalid move notation."));
+    return;
+  }
+
+  double angles[2];
+  int address = EEPROM_START_ADDRESS + index * ANGLE_DATA_SIZE;
+  EEPROM.get(address, angles);
+  Serial.print(F("Source square angles: Theta1 = "));
+  Serial.print(angles[0], 6);
+  Serial.print(F(", Theta2 = "));
+  Serial.println(angles[1], 6);
+  move_xy_to(angles[0], angles[1] - ((90-angles[0])/PULLEY_RATIO));
+}
+
+void test_square(String sq)
+{
+  Serial.print("Square: "); Serial.println(sq);
+  move_to_square(sq);
+  move_z_to(Z_MIN);
+  delay(2000);
+  move_z_to(Z_MAX);
+}
+
+void test_move(String move)
+{
+  // Start square
+  String notation = move.substring(0, 2);
+  test_square(notation);
+
+  // End square
+  notation = move.substring(2, 4);
+  test_square(notation);
+}
+
+void test_pawns_march()
+{
+  for (int row = 7; row > 0; row--) { // Start from row closest to the arm (a8 to h8) and move towards a1 to h1
+    for (int col = 0; col < 8; col++) { // Iterate through all columns (pawns) in the row
+      String sq = chess_index_to_notation(col + row * 8); // Get the starting square notation
+      move_to_square(sq);
+      gripper_open();
+      move_z_to(Z_MIN);
+      gripper_close();
+      delay(500);
+      move_z_to(Z_MAX);
+
+      sq = chess_index_to_notation(col + (row - 1) * 8); // Get the ending square notation
+      move_to_square(sq);
+      move_z_to(Z_MIN);
+      gripper_open();
+      delay(500);
+      move_z_to(Z_MAX);
+      gripper_close();
+    }
+  }
 }
 
 void setup()
@@ -643,20 +647,10 @@ void setup()
   pinMode(LIMIT_SWITCH_Y_PIN, INPUT_PULLUP);
   pinMode(LIMIT_SWITCH_Z_PIN, INPUT_PULLUP);
 
-  //dump_eeprom();
   home_all();
-  //curl_up();
-#if 0
-  const char* squaresToTest[] = {"a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2"};
-  const int numberOfSquares = sizeof(squaresToTest) / sizeof(squaresToTest[0]);
-  for (int i = 0; i < numberOfSquares; i++) {
-    calibrate_square(squaresToTest[i], true);
-  }
-#endif
+  test_pawns_march();
 }
 
 void loop()
 {
-  //test_move(get_move_input());
-  up_down_test();
 }
