@@ -52,12 +52,12 @@
 #define HOMING_REDUCED_SPEED_Y (-(MAX_SPEED_Y >> 3))
 #define ACCELERATION_Y 1000
 
-#define MAX_SPEED_Z 700
+#define MAX_SPEED_Z 1200
 #define REDUCED_SPEED_Z (MAX_SPEED_Z >> 1)
 #define HOMING_SPEED_Z (-MAX_SPEED_Z)
 #define HOMING_REDUCED_SPEED_Z (-(MAX_SPEED_Z >> 2))
-#define ACCELERATION_Z 500
-#define Z_MIN 0 // 250
+#define ACCELERATION_Z 1500
+#define Z_MIN 200
 #define Z_MAX 1900 // 2450
 
 #define PULLEY_RATIO 1.00 //1.879
@@ -602,14 +602,14 @@ void test_pawns_march()
       String sq = chess_index_to_notation(col + row * 8); // Get the starting square notation
       move_to_square(sq);
       gripper_open();
-      move_z_to(Z_MIN);
+      move_z_to(Z_MIN - ((7 - row) * 25));
       gripper_close();
       delay(500);
       move_z_to(Z_MAX);
 
       sq = chess_index_to_notation(col + (row - 1) * 8); // Get the ending square notation
       move_to_square(sq);
-      move_z_to(Z_MIN);
+      move_z_to(Z_MIN - ((7 - (row - 1)) * 25));
       gripper_open();
       delay(500);
       move_z_to(Z_MAX);
