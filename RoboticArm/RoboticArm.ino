@@ -5,6 +5,16 @@
 #include <math.h>
 #include <EEPROM.h>
 
+enum {
+  PIECE_TYPE_PAWN,
+  PIECE_TYPE_ROOK,
+  PIECE_TYPE_KNIGHT,
+  PIECE_TYPE_BISHOP,
+  PIECE_TYPE_QUEEN,
+  PIECE_TYPE_KING,
+  PIECE_TYPE_NUM,
+};
+
 #undef MULTISTEPPER_ENABLED //change to #undef if we want the motors to accelerate/decelerate
 
 #define STEPPER_X_STP_PIN 2
@@ -19,7 +29,7 @@
 #define LIMIT_SWITCH_Z_PIN 11
 
 #define GRIPPER_SERVO_PIN 13
-#define GRIPPER_OPEN_ANGLE 30
+#define GRIPPER_OPEN_ANGLE 20
 #define GRIPPER_CLOSE_ANGLE 100
 
 #define MOTOR_INTERFACE_TYPE 1
@@ -58,7 +68,14 @@
 #define HOMING_REDUCED_SPEED_Z (-(MAX_SPEED_Z >> 2))
 #define ACCELERATION_Z 1500
 #define Z_MIN 200
-#define Z_MAX 1900 // 2450
+#define Z_MAX 1900
+
+#define Z_MIN_PAWN_OFFSET 0
+#define Z_MIN_ROOK_OFFSET 25
+#define Z_MIN_KNIGHT_OFFSET -100
+#define Z_MIN_BISHOP_OFFSET 150
+#define Z_MIN_QUEEN_OFFSET 300
+#define Z_MIN_KING_OFFSET 300
 
 #define PULLEY_RATIO 1.00 //1.879
 #define STEPS_REF_X 820
@@ -72,6 +89,15 @@
 
 #define CAL_LARGE_STEP 5.0
 #define CAL_SMALL_STEP 0.5
+
+uint32_t z_min[PIECE_TYPE_NUM] = {
+  Z_MIN + Z_MIN_PAWN_OFFSET,
+  Z_MIN + Z_MIN_ROOK_OFFSET,
+  Z_MIN + Z_MIN_KNIGHT_OFFSET,
+  Z_MIN + Z_MIN_BISHOP_OFFSET,
+  Z_MIN + Z_MIN_QUEEN_OFFSET,
+  Z_MIN + Z_MIN_KING_OFFSET,
+};
 
 AccelStepper stepperX = AccelStepper(MOTOR_INTERFACE_TYPE, STEPPER_X_STP_PIN, STEPPER_X_DIR_PIN);  
 AccelStepper stepperY = AccelStepper(MOTOR_INTERFACE_TYPE, STEPPER_Y_STP_PIN, STEPPER_Y_DIR_PIN);  
@@ -389,6 +415,17 @@ void xy_lookup(uint8_t index, double *x, double *y)
   *y = y_lower * (1 - y_fraction) + y_upper * y_fraction;
 }
 
+uint32_t adjusted_z_min(uint8_t piece, uint8_t row)
+{
+  // TODO The nomenclature for 'row' is reverse in robotic arm. Need to make it consistent with chess board.
+  uint32_t zmin = z_min[piece] - ((CHESS_ROWS - 1 - row) * 25);
+  if (piece == PIECE_TYPE_KNIGHT) {
+    zmin = z_min[piece] - ((CHESS_ROWS - 1 - row) * 14);
+  }
+
+  return zmin;
+}
+
 void prompt_next_square(bool eeprom)
 {
   String notation = chess_index_to_notation(current_square_index);
@@ -602,14 +639,14 @@ void test_pawns_march()
       String sq = chess_index_to_notation(col + row * 8); // Get the starting square notation
       move_to_square(sq);
       gripper_open();
-      move_z_to(Z_MIN - ((7 - row) * 25));
+      move_z_to(adjusted_z_min(PIECE_TYPE_PAWN, row));
       gripper_close();
       delay(500);
       move_z_to(Z_MAX);
 
       sq = chess_index_to_notation(col + (row - 1) * 8); // Get the ending square notation
       move_to_square(sq);
-      move_z_to(Z_MIN - ((7 - (row - 1)) * 25));
+      move_z_to(adjusted_z_min(PIECE_TYPE_PAWN, row - 1));
       gripper_open();
       delay(500);
       move_z_to(Z_MAX);
