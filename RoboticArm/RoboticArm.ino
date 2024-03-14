@@ -64,7 +64,7 @@ enum {
 
 #define MAX_SPEED_Z 1200
 #define REDUCED_SPEED_Z (MAX_SPEED_Z >> 1)
-#define HOMING_SPEED_Z (-MAX_SPEED_Z)
+#define HOMING_SPEED_Z (-REDUCED_SPEED_Z)
 #define HOMING_REDUCED_SPEED_Z (-(MAX_SPEED_Z >> 2))
 #define ACCELERATION_Z 1500
 #define Z_MIN 200
@@ -426,6 +426,33 @@ uint32_t adjusted_z_min(uint8_t piece, uint8_t row)
   return zmin;
 }
 
+uint8_t piece_type(char p)
+{
+  uint8_t piece;
+  switch (p) {
+    case 'p': {
+      piece = PIECE_TYPE_PAWN;
+    } break;
+    case 'r': {
+      piece = PIECE_TYPE_ROOK;
+    } break;
+    case 'n': {
+      piece = PIECE_TYPE_KNIGHT;
+    } break;
+    case 'b': {
+      piece = PIECE_TYPE_BISHOP;
+    } break;
+    case 'q': {
+      piece = PIECE_TYPE_QUEEN;
+    } break;
+    case 'k': {
+      piece = PIECE_TYPE_KING;
+    } break;
+  }
+
+  return piece;
+}
+
 void prompt_next_square(bool eeprom)
 {
   String notation = chess_index_to_notation(current_square_index);
@@ -568,19 +595,6 @@ void calibrate_board(bool eeprom)
   prompt_next_square(eeprom);
 }
 
-String get_move_input()
-{
-  Serial.println(F("Enter chess move (e.g., e2e4):"));
-
-  String move = Serial.readStringUntil('\n');
-  while (move.length() != 4) {
-    move = Serial.readStringUntil('\n');
-  }
-  move.trim(); // Remove any whitespace
-  Serial.println(move);
-  return move;
-}
-
 String get_square_input()
 {
   Serial.println(F("Enter chess square (e.g., e2):"));
@@ -621,15 +635,60 @@ void test_square(String sq)
   move_z_to(Z_MAX);
 }
 
+String get_move_input()
+{
+  // move format: <start sq><piece1><end sq><piece2>
+  // If piece2 is 'x' or differs from piece1, then it is taking opponent's piece
+  // else it is just a movement
+  Serial.println(F("Enter chess move (e.g., e2pe4p):"));
+
+  String move = Serial.readStringUntil('\n');
+  while (move.length() != 6) {
+    move = Serial.readStringUntil('\n');
+  }
+  move.trim(); // Remove any whitespace
+  Serial.println(move);
+  return move;
+}
+
 void test_move(String move)
 {
-  // Start square
-  String notation = move.substring(0, 2);
-  test_square(notation);
+  // Move type?
+  if ((move[2] != move[5]) || (move[5] == 'x')) {
+    // Piece being taken
+    String sq = move.substring(3, 5);
+    move_to_square(sq);
+    gripper_open();
+    if (move[5] == 'x') {
+      move_z_to(adjusted_z_min(piece_type(move[2]), chess_notation_to_index(sq) / CHESS_ROWS));
+    } else {
+      move_z_to(adjusted_z_min(piece_type(move[5]), chess_notation_to_index(sq) / CHESS_ROWS));
+    }
+    gripper_close();
+    delay(500);
+    move_z_to(Z_MAX);
+    curl_up();
+    gripper_open();
+    delay(500);
+    gripper_close();
+  }
 
-  // End square
-  notation = move.substring(2, 4);
-  test_square(notation);
+  // Simple piece movement
+  String sq = move.substring(0, 2);
+  move_to_square(sq);
+  gripper_open();
+  move_z_to(adjusted_z_min(piece_type(move[2]), chess_notation_to_index(sq) / CHESS_ROWS));
+  gripper_close();
+  delay(500);
+  move_z_to(Z_MAX);
+  sq = move.substring(3, 5);
+  move_to_square(sq);
+  move_z_to(adjusted_z_min(piece_type(move[2]), chess_notation_to_index(sq) / CHESS_ROWS));
+  gripper_open();
+  delay(500);
+  move_z_to(Z_MAX);
+  gripper_close();
+  curl_up();
 }
 
 void test_pawns_march()
@@ -684,10 +743,14 @@ void setup()
   pinMode(LIMIT_SWITCH_Y_PIN, INPUT_PULLUP);
   pinMode(LIMIT_SWITCH_Z_PIN, INPUT_PULLUP);
 
+  gripper_open();
+  delay(1000);
+  gripper_close();
+
   home_all();
-  test_pawns_march();
 }
 
 void loop()
 {
+  test_move(get_move_input());
 }
