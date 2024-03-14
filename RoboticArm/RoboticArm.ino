@@ -68,7 +68,7 @@ enum {
 #define HOMING_REDUCED_SPEED_Z (-(MAX_SPEED_Z >> 2))
 #define ACCELERATION_Z 1500
 #define Z_MIN 200
-#define Z_MAX 1900
+#define Z_MAX 2500
 
 #define Z_MIN_PAWN_OFFSET 0
 #define Z_MIN_ROOK_OFFSET 25
