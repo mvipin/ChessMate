@@ -44,7 +44,8 @@ class ChessSoft:
                 break
         ack = line.decode('utf8').strip()
         # TODO compare move and ack. Ack is generated through sensing on board
-        return ack
+        print("uci: " + uci + ", ack: " + ack)
+        return uci
 
     async def get_hint_async(self) -> None:
         transport, engine = await chess.engine.popen_uci("/usr/games/stockfish")
@@ -109,7 +110,7 @@ class ChessSoft:
 
         return result_string
 
-    def get_move(self, prompt):
+    def get_move(self):
         legal_uci_moves = [move.uci() for move in self.board.legal_moves]
         occupancy = self.get_occupancy()
         occupancy_str = "occupancy:" + occupancy + "\n"
@@ -155,6 +156,7 @@ class ChessSoft:
                     line=self.serial.readline()
                     break
             uci = line.decode('utf8').strip()
+        #if self.menu != None and self.treset != True:
         if self.menu != None:
             self.menu.show_game_status("USER: " + uci)
         try:
@@ -167,11 +169,23 @@ class ChessSoft:
             print("Invalid move")
         return uci
 
+    def requires_promotion(self, uci):
+        if len(uci) == 4:  # Standard UCI move length
+            from_square = chess.SQUARE_NAMES.index(uci[:2])
+            to_square = chess.SQUARE_NAMES.index(uci[2:])
+            moving_piece = self.board.piece_at(from_square)
+            if moving_piece.piece_type == chess.PAWN:
+                if (chess.square_rank(to_square) == 7 and moving_piece.color == chess.WHITE) or \
+                   (chess.square_rank(to_square) == 0 and moving_piece.color == chess.BLACK):
+                    return True
+        return False
+
     def human_player(self):
         uci = None
         while uci == None:
-            uci = self.get_move(
-                "%s's move[q to quit]> " % self.who(self.board.turn))
+            uci = self.get_move()
+        if uci and self.requires_promotion(uci):
+            uci += 'q'  # Append 'q' to promote to queen by default
         return uci
 
     def who(self, player):
@@ -231,9 +245,6 @@ class ChessSoft:
         self.board = chess.Board()
         self.treset = False
 
-    def reset_board(self):
-        self.board = None
-
     def reset_target(self):
         self.treset = True
 
@@ -253,6 +264,15 @@ class ChessSoft:
             self.serial.write(result_str.encode('utf8'))
             self.menu.show_game_status(result_str)
             print(result_str)
+            '''
+            while True:
+                if self.serial.inWaiting():
+                    line=self.serial.readline()
+                    break
+            uci = line.decode('utf8').strip()
+            if uci == 'f0f0': # special move from board indicating override
+                self.board = None
+            '''
 
     def play_next_move(self):
         if self.treset:
