@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <math.h>
 #include <EEPROM.h>
+#include <SoftwareSerial.h>
 
 enum {
   PIECE_TYPE_PAWN,
@@ -27,6 +28,8 @@ enum {
 #define LIMIT_SWITCH_X_PIN 9
 #define LIMIT_SWITCH_Y_PIN 10
 #define LIMIT_SWITCH_Z_PIN 11
+#define SERIAL_RX_PIN 12
+#define SERIAL_TX_PIN A3
 
 #define GRIPPER_SERVO_PIN 13
 #define GRIPPER_OPEN_ANGLE 20
@@ -89,6 +92,8 @@ enum {
 
 #define CAL_LARGE_STEP 5.0
 #define CAL_SMALL_STEP 0.5
+
+SoftwareSerial chessboard(SERIAL_RX_PIN, SERIAL_TX_PIN);
 
 uint32_t z_min[PIECE_TYPE_NUM] = {
   Z_MIN + Z_MIN_PAWN_OFFSET,
@@ -312,9 +317,9 @@ void up_down_test()
 
 void curl_up()
 {
-  move_y_to(0);
+  move_y_to(-10);
   move_x_to(STEP_ZERO_ANGLE(X));
-  move_y_to(STEP_ZERO_ANGLE(Y) + ((STEP_ZERO_ANGLE(X) - 90)/PULLEY_RATIO));
+  //move_y_to(STEP_ZERO_ANGLE(Y) + ((STEP_ZERO_ANGLE(X) - 90)/PULLEY_RATIO));
 }
 
 void dump_eeprom()
@@ -654,13 +659,13 @@ String get_move_input()
 void test_move(String move)
 {
   // Move type?
-  if ((move[2] != move[5]) || (move[5] == 'x')) {
+  if ((move[4] != move[5]) || (move[5] == 'x')) {
     // Piece being taken
-    String sq = move.substring(3, 5);
+    String sq = move.substring(2, 4);
     move_to_square(sq);
     gripper_open();
     if (move[5] == 'x') {
-      move_z_to(adjusted_z_min(piece_type(move[2]), chess_notation_to_index(sq) / CHESS_ROWS));
+      move_z_to(adjusted_z_min(piece_type(move[4]), chess_notation_to_index(sq) / CHESS_ROWS));
     } else {
       move_z_to(adjusted_z_min(piece_type(move[5]), chess_notation_to_index(sq) / CHESS_ROWS));
     }
@@ -677,17 +682,18 @@ void test_move(String move)
   String sq = move.substring(0, 2);
   move_to_square(sq);
   gripper_open();
-  move_z_to(adjusted_z_min(piece_type(move[2]), chess_notation_to_index(sq) / CHESS_ROWS));
+  move_z_to(adjusted_z_min(piece_type(move[4]), chess_notation_to_index(sq) / CHESS_ROWS));
   gripper_close();
   delay(500);
   move_z_to(Z_MAX);
-  sq = move.substring(3, 5);
+  sq = move.substring(2, 4);
   move_to_square(sq);
-  move_z_to(adjusted_z_min(piece_type(move[2]), chess_notation_to_index(sq) / CHESS_ROWS));
+  move_z_to(adjusted_z_min(piece_type(move[4]), chess_notation_to_index(sq) / CHESS_ROWS));
   gripper_open();
   delay(500);
   move_z_to(Z_MAX);
   gripper_close();
+  chessboard.println("done");
   curl_up();
 }
 
@@ -717,6 +723,7 @@ void test_pawns_march()
 void setup()
 {
   Serial.begin(9600);
+  chessboard.begin(9600);
   static_assert(GRIPPER_OPEN_ANGLE < GRIPPER_CLOSE_ANGLE, "Invalid gripper angle range");
 
   gripper.attach(GRIPPER_SERVO_PIN);
@@ -748,9 +755,33 @@ void setup()
   gripper_close();
 
   home_all();
+  curl_up();
+  Serial.println("Robotic Arm initialized");
 }
 
-void loop()
-{
-  test_move(get_move_input());
+void loop() {
+  static String inputBuffer = ""; // Buffer to hold incoming characters
+
+  // Check if data is available to read from chessboard
+  while (chessboard.available()) {
+    char c = chessboard.read(); // Read a character
+    Serial.write(c); // Echo the character to the main serial port for debugging
+
+    if (c == '\n' || c == '\r') {
+      // End of line character, ignore it but reset if in buffer
+      if(inputBuffer.length() != 0) {
+        Serial.println(F("Incomplete move, resetting buffer."));
+        inputBuffer = ""; // Clear the buffer if we had partial data
+      }
+    } else {
+      inputBuffer += c; // Add character to buffer
+
+      // Check if we have a full move in the buffer
+      if (inputBuffer.length() == 6) {
+        Serial.println("\nInitiating move"); // Move to a new line
+        test_move(inputBuffer); // Process the move
+        inputBuffer = ""; // Clear the buffer for the next move
+      }
+    }
+  }
 }

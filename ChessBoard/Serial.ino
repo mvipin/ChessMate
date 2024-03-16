@@ -103,9 +103,22 @@ void process_cmd(char cmd[], uint8_t size) {
       color = ORANGE;
     }
     highlight_move(special_moves[MOVE_TYPE_COMP], GREEN, color);
+    Serial1.print(tokens[idx]);
     state = MOVE_COMP;
     Serial.print("comp: ");
     Serial.println(special_moves[MOVE_TYPE_COMP]);
+    while (true) {
+      String ack = Serial1.readStringUntil('\n');
+      if (ack != NULL) {
+        ack.trim();
+        Serial.print("Arm Ack: ");
+        Serial.println(ack);
+        if (ack == "done") {
+          confirm = true;
+          break;
+        }
+      }
+    }
   } else if (strcmp(tokens[idx],"checkmate") == 0) {
     char dst[3];
     strncpy(dst, tokens[++idx], 2);
@@ -165,6 +178,7 @@ void send_response(char resp[]) {
 }
 
 void serial_init() {
-  Serial2.begin(9600); // Software serial for communicating with Pi
+  Serial1.begin(9600); // for communicating with Robotic Arm
+  Serial2.begin(9600); // for communicating with Pi
   Serial.println("Host/Target serial communication initialized");
 }
