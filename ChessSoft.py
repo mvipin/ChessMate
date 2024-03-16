@@ -36,8 +36,25 @@ class ChessSoft:
         occupancy = self.get_occupancy()
         occupancy_str = "occupancy:" + occupancy + "\n"
         self.serial.write(occupancy_str.encode('utf8'))
-        move = "comp:" + uci + "\n"
-        self.serial.write(move.encode('utf8'))
+        move = chess.Move.from_uci(uci)
+        # Get the piece being moved
+        moving_piece = self.board.piece_at(move.from_square)
+        moving_piece_letter = moving_piece.symbol().lower() if moving_piece else ''
+
+        # Determine if a piece is being taken and what piece it is
+        taken_piece = self.board.piece_at(move.to_square)
+        taken_piece_letter = moving_piece_letter
+        if taken_piece != None:
+            taken_piece_letter = taken_piece.symbol().lower()
+            if taken_piece_letter == moving_piece_letter:
+                taken_piece_letter = 'x'
+        start_square = chess.square_name(move.from_square)
+        end_square = chess.square_name(move.to_square)
+        extended_move = f"{start_square}{end_square}{moving_piece_letter}{taken_piece_letter}"
+        print("extended move: " + extended_move)
+
+        command = "comp:" + extended_move + "\n"
+        self.serial.write(command.encode('utf8'))
         while True:
             if self.serial.inWaiting():
                 line=self.serial.readline()
