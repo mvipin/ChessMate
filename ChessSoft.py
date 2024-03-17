@@ -31,9 +31,8 @@ class ChessSoft:
         await engine.quit()
         return uci
 
-    def stockfish_player(self):
-        asyncio.set_event_loop_policy(chess.engine.EventLoopPolicy())
-        uci = asyncio.run(self.stockfish_player_async())
+    async def stockfish_player(self):
+        uci = await self.stockfish_player_async()
         occupancy = self.get_occupancy()
         occupancy_str = "occupancy:" + occupancy + "\n"
         self.serial.write(occupancy_str.encode('utf8'))
@@ -72,10 +71,8 @@ class ChessSoft:
         await engine.quit()
         return info["pv"][0].uci()
 
-    def get_hint(self):
-        asyncio.set_event_loop_policy(chess.engine.EventLoopPolicy())
-        uci = asyncio.run(self.get_hint_async())
-        return uci
+    async def get_hint(self):
+        return await self.get_hint_async()
 
     def process_start_cmd(self, start):
         # Invalidate move if:
@@ -128,7 +125,7 @@ class ChessSoft:
 
         return result_string
 
-    def get_move(self):
+    async def get_move(self):
         legal_uci_moves = [move.uci() for move in self.board.legal_moves]
         occupancy = self.get_occupancy()
         occupancy_str = "occupancy:" + occupancy + "\n"
@@ -141,7 +138,7 @@ class ChessSoft:
             print(legal_moves)
             self.serial.write(legal_moves.encode('utf8'))
 
-        hint = self.get_hint()
+        hint = await self.get_hint()
         hint_str = "hint:" + hint + "\n"
         self.serial.write(hint_str.encode('utf8'))
         print(hint_str)
@@ -198,8 +195,7 @@ class ChessSoft:
                     return True
         return False
 
-    def generate_move_sound(self, start_square, end_square, squares_dir='sounds/squares', moves_dir='sounds/moves'):
-        """Generate a sound file for a chess move by concatenating square sounds."""
+    async def generate_move_sound(self, start_square, end_square, squares_dir='sounds/squares', moves_dir='sounds/moves'):
         # File paths for the input square sound files
         start_file = os.path.join(squares_dir, f"{start_square}.wav")
         end_file = os.path.join(squares_dir, f"{end_square}.wav")
@@ -214,25 +210,26 @@ class ChessSoft:
             '-map', '[out]', move_sound_file
         ]
 
-        # Execute the ffmpeg command
-        subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # Execute the ffmpeg command using asyncio.subprocess
+        process = await asyncio.create_subprocess_exec(*command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        await process.wait()  # Wait for the process to finish
 
         print(f"Generated move sound: {move_sound_file}")
         return move_sound_file
 
-    def play_move_sound(self, start_square, end_square, squares_dir='sounds/squares', moves_dir='sounds/moves'):
+    async def play_move_sound(self, start_square, end_square, squares_dir='sounds/squares', moves_dir='sounds/moves'):
         """Play a sound for a chess move, generating it if it doesn't exist."""
         move_sound_file = os.path.join(moves_dir, f"move_{start_square}_to_{end_square}.wav")
 
         if not os.path.exists(move_sound_file):
             print(f"Sound for move {start_square} to {end_square} not found. Generating now...")
-            self.generate_move_sound(start_square, end_square, squares_dir, moves_dir)
+            await self.generate_move_sound(start_square, end_square, squares_dir, moves_dir)
 
         # Now that the file exists, play it using aplay
-        aplay_command = ['aplay', move_sound_file]
-        subprocess.run(aplay_command)
+        process = await asyncio.create_subprocess_exec('aplay', move_sound_file)
+        await process.wait()
 
-    def play_random_fact(self):
+    async def play_random_fact(self):
         sounds_dir = "sounds/facts"
         # Filter out files that match the naming convention 'facts_<id>.wav'
         fact_files = [f for f in os.listdir(sounds_dir) if f.startswith('fact_') and f.endswith('.wav')]
@@ -241,48 +238,20 @@ class ChessSoft:
             # Select a random fact file
             random_fact_file = random.choice(fact_files)
             fact_path = os.path.join(sounds_dir, random_fact_file)
-
-            # Play the selected wav file
-            subprocess.run(['aplay', fact_path])
+            process = await asyncio.create_subprocess_exec('aplay', fact_path)
+            await process.wait()
         else:
             print("No fact wav files found.")
 
-    def speak(self, text):
-        command = ['espeak', '-ven+f2', '-k5', '-s150', '-a200', '-g5', text]
-        subprocess.run(command)
-
-    def speak_random_fact(self):
-        # List of chess facts
-        chess_facts = [
-            "Did You Know, chess is believed to have originated in India, around the 6th century AD, originally called 'Chaturanga'",
-            "Did You Know, the term 'chess' comes from the Persian word 'Shah,' meaning King, reflecting the objective of the game – to checkmate the opponent's king.",
-            "Did You Know, the first chessboard with alternating light and dark squares appears in Europe in 1090.",
-            "Did You Know, the longest possible chess game is 5,949 moves, based on the 50-move rule.",
-            "Did You Know, the 'en passant' rule was added in the 15th century to speed up the game.",
-            "Did You Know, initially, a pawn could only be promoted to a queen, a rule known as 'Queening'. Later, promotion to any piece became allowed.",
-            "Did You Know, the 'Turk' was a fake chess-playing machine from the 18th century that amazed audiences, including Napoleon and Benjamin Franklin.",
-        ]
-
-        # Select a random fact
-        random_fact = random.choice(chess_facts)
-        self.speak(random_fact)
-
-    def speak_move(self, uci):
-        # Convert UCI move to spoken text
-        move_text = f"Moving from {uci[:2]} to {uci[2:4]}"
-        if len(uci) > 4:  # Handle promotion
-            move_text += f" and promoting to {uci[4].upper()}"
-        self.speak(move_text)
-
-    def human_player(self):
+    async def human_player(self):
         uci = None
-        while uci == None:
-            uci = self.get_move()
+        while uci is None:
+            uci = await self.get_move()
         if uci and self.requires_promotion(uci):
             uci += 'q'  # Append 'q' to promote to queen by default
         start_square, end_square = uci[:2], uci[2:4]
-        self.play_move_sound(start_square, end_square)
-        self.play_random_fact()
+        await self.play_move_sound(start_square, end_square)
+        await self.play_random_fact()
         return uci
 
     def who(self, player):
@@ -371,15 +340,15 @@ class ChessSoft:
                 self.board = None
             '''
 
-    def play_next_move(self):
+    async def play_next_move(self):
         if self.treset:
             self.serial.write("reset\n".encode('utf8'))
             self.board = None
             return
         if self.board.turn == chess.WHITE:
-            uci = self.player1()
+            uci = await self.player1()
         else:
-            uci = self.player2()
+            uci = await self.player2()
         self.board.push_uci(uci)
         print(self.board)
 

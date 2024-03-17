@@ -1,8 +1,5 @@
-import time
+import asyncio
 import serial
-import schedule
-from timeloop import Timeloop
-from datetime import timedelta
 from Menu import Menu
 from Rotary import Rotary
 from ChessSoft import ChessSoft
@@ -38,7 +35,7 @@ r = Rotary(**{'menu': m, 'clk': 29, 'dt': 31, 'btn': 37})
 m.set_selection(0)
 m.render()
 
-def job():
+async def job():
     if c.is_game_set():
         if c.game_over():
             c.show_result()
@@ -46,10 +43,13 @@ def job():
             m.reset_menu()
             m.set_selection(0)
             return m.render()
-        c.play_next_move()
+        else:
+            await c.play_next_move()
 
-schedule.every(0.1).seconds.do(job)
+async def async_scheduler():
+    while True:
+        await job()
+        await asyncio.sleep(0.1)  # Adjust timing as needed
 
-while True:
-    schedule.run_pending()
-    #time.sleep(1)
+if __name__ == "__main__":
+    asyncio.run(async_scheduler())
