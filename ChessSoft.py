@@ -1,9 +1,10 @@
+import os
 import time
 import asyncio
 import random
 import chess
 import chess.engine
-
+import subprocess
 
 class ChessSoft:
     def __init__(self, ser):
@@ -197,12 +198,91 @@ class ChessSoft:
                     return True
         return False
 
+    def generate_move_sound(self, start_square, end_square, squares_dir='sounds/squares', moves_dir='sounds/moves'):
+        """Generate a sound file for a chess move by concatenating square sounds."""
+        # File paths for the input square sound files
+        start_file = os.path.join(squares_dir, f"{start_square}.wav")
+        end_file = os.path.join(squares_dir, f"{end_square}.wav")
+
+        # Output move sound file path
+        move_sound_file = os.path.join(moves_dir, f"move_{start_square}_to_{end_square}.wav")
+
+        # Command to concatenate the square sound files using ffmpeg
+        command = [
+            'ffmpeg', '-y', '-i', start_file, '-i', end_file,
+            '-filter_complex', '[0:0][1:0]concat=n=2:v=0:a=1[out]',
+            '-map', '[out]', move_sound_file
+        ]
+
+        # Execute the ffmpeg command
+        subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        print(f"Generated move sound: {move_sound_file}")
+        return move_sound_file
+
+    def play_move_sound(self, start_square, end_square, squares_dir='sounds/squares', moves_dir='sounds/moves'):
+        """Play a sound for a chess move, generating it if it doesn't exist."""
+        move_sound_file = os.path.join(moves_dir, f"move_{start_square}_to_{end_square}.wav")
+
+        if not os.path.exists(move_sound_file):
+            print(f"Sound for move {start_square} to {end_square} not found. Generating now...")
+            self.generate_move_sound(start_square, end_square, squares_dir, moves_dir)
+
+        # Now that the file exists, play it using aplay
+        aplay_command = ['aplay', move_sound_file]
+        subprocess.run(aplay_command)
+
+    def play_random_fact(self):
+        sounds_dir = "sounds/facts"
+        # Filter out files that match the naming convention 'facts_<id>.wav'
+        fact_files = [f for f in os.listdir(sounds_dir) if f.startswith('fact_') and f.endswith('.wav')]
+
+        if fact_files:  # Ensure there is at least one file
+            # Select a random fact file
+            random_fact_file = random.choice(fact_files)
+            fact_path = os.path.join(sounds_dir, random_fact_file)
+
+            # Play the selected wav file
+            subprocess.run(['aplay', fact_path])
+        else:
+            print("No fact wav files found.")
+
+    def speak(self, text):
+        command = ['espeak', '-ven+f2', '-k5', '-s150', '-a200', '-g5', text]
+        subprocess.run(command)
+
+    def speak_random_fact(self):
+        # List of chess facts
+        chess_facts = [
+            "Did You Know, chess is believed to have originated in India, around the 6th century AD, originally called 'Chaturanga'",
+            "Did You Know, the term 'chess' comes from the Persian word 'Shah,' meaning King, reflecting the objective of the game – to checkmate the opponent's king.",
+            "Did You Know, the first chessboard with alternating light and dark squares appears in Europe in 1090.",
+            "Did You Know, the longest possible chess game is 5,949 moves, based on the 50-move rule.",
+            "Did You Know, the 'en passant' rule was added in the 15th century to speed up the game.",
+            "Did You Know, initially, a pawn could only be promoted to a queen, a rule known as 'Queening'. Later, promotion to any piece became allowed.",
+            "Did You Know, the 'Turk' was a fake chess-playing machine from the 18th century that amazed audiences, including Napoleon and Benjamin Franklin.",
+        ]
+
+        # Select a random fact
+        random_fact = random.choice(chess_facts)
+        self.speak(random_fact)
+
+    def speak_move(self, uci):
+        # Convert UCI move to spoken text
+        move_text = f"Moving from {uci[:2]} to {uci[2:4]}"
+        if len(uci) > 4:  # Handle promotion
+            move_text += f" and promoting to {uci[4].upper()}"
+        self.speak(move_text)
+
     def human_player(self):
         uci = None
         while uci == None:
             uci = self.get_move()
         if uci and self.requires_promotion(uci):
             uci += 'q'  # Append 'q' to promote to queen by default
+        start_square, end_square = uci[:2], uci[2:4]
+        self.play_move_sound(start_square, end_square)
+        self.play_random_fact()
         return uci
 
     def who(self, player):
