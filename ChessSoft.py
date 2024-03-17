@@ -21,7 +21,19 @@ class ChessSoft:
         move = random.choice(list(self.board.legal_moves))
         return move.uci()
 
-    async def stockfish_player_async(self) -> None:
+    async def stockfish_player_async(self, engine):
+        result = await engine.play(self.board, chess.engine.Limit(time=self.time, depth=self.depth))
+        return result.move.uci()
+
+    async def stockfish_player(self):
+        transport, engine = await chess.engine.popen_uci("/usr/games/stockfish")
+        # Initiate Stockfish computation without waiting for it to finish
+        stockfish_task = asyncio.create_task(self.stockfish_player_async(engine))
+
+        # Immediately return control so that move sound and random fact can be played
+        return stockfish_task, engine
+
+    async def stockfish_player(self):
         transport, engine = await chess.engine.popen_uci("/usr/games/stockfish")
         result = await engine.play(self.board, chess.engine.Limit(
             time=self.time, depth=self.depth))
@@ -29,10 +41,6 @@ class ChessSoft:
         if self.menu != None:
             self.menu.show_game_status("COMP: " + uci)
         await engine.quit()
-        return uci
-
-    async def stockfish_player(self):
-        uci = await self.stockfish_player_async()
         occupancy = self.get_occupancy()
         occupancy_str = "occupancy:" + occupancy + "\n"
         self.serial.write(occupancy_str.encode('utf8'))
@@ -64,15 +72,12 @@ class ChessSoft:
         print("uci: " + uci + ", ack: " + ack)
         return uci
 
-    async def get_hint_async(self) -> None:
+    async def get_hint(self):
         transport, engine = await chess.engine.popen_uci("/usr/games/stockfish")
         info = await engine.analyse(self.board, chess.engine.Limit(time=0.1))
         print("Score:", info["score"], info["pv"][0])
         await engine.quit()
         return info["pv"][0].uci()
-
-    async def get_hint(self):
-        return await self.get_hint_async()
 
     def process_start_cmd(self, start):
         # Invalidate move if:
@@ -218,30 +223,30 @@ class ChessSoft:
         return move_sound_file
 
     async def play_move_sound(self, start_square, end_square, squares_dir='sounds/squares', moves_dir='sounds/moves'):
-        """Play a sound for a chess move, generating it if it doesn't exist."""
         move_sound_file = os.path.join(moves_dir, f"move_{start_square}_to_{end_square}.wav")
 
         if not os.path.exists(move_sound_file):
             print(f"Sound for move {start_square} to {end_square} not found. Generating now...")
+            # Ensure generate_move_sound is also an async function if it involves subprocess or I/O operations
             await self.generate_move_sound(start_square, end_square, squares_dir, moves_dir)
 
-        # Now that the file exists, play it using aplay
         process = await asyncio.create_subprocess_exec('aplay', move_sound_file)
-        await process.wait()
+        await process.wait()  # Wait for the move sound to finish playing
 
     async def play_random_fact(self):
         sounds_dir = "sounds/facts"
-        # Filter out files that match the naming convention 'facts_<id>.wav'
         fact_files = [f for f in os.listdir(sounds_dir) if f.startswith('fact_') and f.endswith('.wav')]
 
-        if fact_files:  # Ensure there is at least one file
-            # Select a random fact file
+        if fact_files:
             random_fact_file = random.choice(fact_files)
             fact_path = os.path.join(sounds_dir, random_fact_file)
             process = await asyncio.create_subprocess_exec('aplay', fact_path)
-            await process.wait()
         else:
             print("No fact wav files found.")
+
+    async def sequential_sound_play(self, start_square, end_square):
+        await self.play_move_sound(start_square, end_square)
+        await self.play_random_fact()
 
     async def human_player(self):
         uci = None
@@ -250,8 +255,7 @@ class ChessSoft:
         if uci and self.requires_promotion(uci):
             uci += 'q'  # Append 'q' to promote to queen by default
         start_square, end_square = uci[:2], uci[2:4]
-        await self.play_move_sound(start_square, end_square)
-        await self.play_random_fact()
+        await self.sequential_sound_play(start_square, end_square)
         return uci
 
     def who(self, player):
