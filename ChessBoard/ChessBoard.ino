@@ -68,6 +68,7 @@ void process_board() {
         reset_occupancy();
         set_control_pixel(HUMAN, BLACK);
         set_control_pixel(COMPUTER, GREEN);
+        Serial1.print("i");
       } else {
         state = MOVE_RESET;
       }

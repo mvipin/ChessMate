@@ -656,6 +656,26 @@ String get_move_input()
   return move;
 }
 
+void idle_move()
+{
+    static uint8_t i = 0;
+    switch (i) {
+        case 0: {
+            move_to_square("d4");
+        } break;
+        case 1: {
+            move_to_square("e4");
+        } break;
+        case 2: {
+            move_to_square("e5");
+        } break;
+        case 3: {
+            move_to_square("d5");
+        } break;
+    }
+    i = (i + 1) % 4;
+}
+
 void test_move(String move)
 {
   // Move type?
@@ -761,13 +781,16 @@ void setup()
 
 void loop() {
   static String inputBuffer = ""; // Buffer to hold incoming characters
+  static bool idle_move_start = false;
 
   // Check if data is available to read from chessboard
   while (chessboard.available()) {
     char c = chessboard.read(); // Read a character
     Serial.write(c); // Echo the character to the main serial port for debugging
 
-    if (c == '\n' || c == '\r') {
+    if (c == 'i') {
+      idle_move_start = true;
+    } else if (c == '\n' || c == '\r') {
       // End of line character, ignore it but reset if in buffer
       if(inputBuffer.length() != 0) {
         Serial.println(F("Incomplete move, resetting buffer."));
@@ -778,10 +801,15 @@ void loop() {
 
       // Check if we have a full move in the buffer
       if (inputBuffer.length() == 6) {
+        idle_move_start = false;
         Serial.println("\nInitiating move"); // Move to a new line
         test_move(inputBuffer); // Process the move
         inputBuffer = ""; // Clear the buffer for the next move
       }
     }
+  }
+
+  if (idle_move_start) {
+    idle_move();
   }
 }
