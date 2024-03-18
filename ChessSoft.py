@@ -211,14 +211,12 @@ class ChessSoft:
         return move_sound_file
 
     async def play_move_sound(self, start_square, end_square, squares_dir='sounds/squares', moves_dir='sounds/moves'):
-        move_sound_file = os.path.join(moves_dir, f"move_{start_square}_to_{end_square}.wav")
-
-        if not os.path.exists(move_sound_file):
-            print(f"Sound for move {start_square} to {end_square} not found. Generating now...")
-            # Ensure generate_move_sound is also an async function if it involves subprocess or I/O operations
+        move_sound_file_path = os.path.join(moves_dir, start_square, f"move_{start_square}_to_{end_square}.wav")
+        if not os.path.exists(move_sound_file_path):
+            print(f"Sound for move {start_square} to {end_square} not found in {start_square} folder. Generating now...")
             await self.generate_move_sound(start_square, end_square, squares_dir, moves_dir)
+        process = await asyncio.create_subprocess_exec('aplay', move_sound_file_path)
 
-        process = await asyncio.create_subprocess_exec('aplay', move_sound_file)
         await process.wait()  # Wait for the move sound to finish playing
 
     async def play_move_quality(self, score):
