@@ -21,18 +21,6 @@ class ChessSoft:
         move = random.choice(list(self.board.legal_moves))
         return move.uci()
 
-    async def stockfish_player_async(self, engine):
-        result = await engine.play(self.board, chess.engine.Limit(time=self.time, depth=self.depth))
-        return result.move.uci()
-
-    async def stockfish_player(self):
-        transport, engine = await chess.engine.popen_uci("/usr/games/stockfish")
-        # Initiate Stockfish computation without waiting for it to finish
-        stockfish_task = asyncio.create_task(self.stockfish_player_async(engine))
-
-        # Immediately return control so that move sound and random fact can be played
-        return stockfish_task, engine
-
     async def stockfish_player(self):
         transport, engine = await chess.engine.popen_uci("/usr/games/stockfish")
         result = await engine.play(self.board, chess.engine.Limit(
@@ -233,20 +221,32 @@ class ChessSoft:
         process = await asyncio.create_subprocess_exec('aplay', move_sound_file)
         await process.wait()  # Wait for the move sound to finish playing
 
+    async def play_move_quality(self, score):
+        comments_dir = "sounds/comments"
+        if score >= 1 and score <= 2:
+            comment_sound_file = os.path.join(comments_dir, f"comment_0.wav")
+        else:
+            comment_sound_file = os.path.join(comments_dir, f"comment_1.wav")
+        process = await asyncio.create_subprocess_exec('aplay', comment_sound_file)
+        await process.wait()  # Wait for the move sound to finish playing
+
     async def play_random_fact(self):
-        sounds_dir = "sounds/facts"
-        fact_files = [f for f in os.listdir(sounds_dir) if f.startswith('fact_') and f.endswith('.wav')]
+        facts_dir = "sounds/facts"
+        fact_files = [f for f in os.listdir(facts_dir) if f.startswith('fact_') and f.endswith('.wav')]
 
         if fact_files:
             random_fact_file = random.choice(fact_files)
-            fact_path = os.path.join(sounds_dir, random_fact_file)
+            fact_path = os.path.join(facts_dir, random_fact_file)
             process = await asyncio.create_subprocess_exec('aplay', fact_path)
         else:
             print("No fact wav files found.")
 
-    async def sequential_sound_play(self, start_square, end_square):
+    async def sequential_sound_play(self, start_square, end_square, score):
         await self.play_move_sound(start_square, end_square)
-        await self.play_random_fact()
+        if score >= 1 and score < 5:
+            await self.play_move_quality(score)
+        else:
+            await self.play_random_fact()
 
     async def human_player(self):
         uci = None
@@ -255,8 +255,30 @@ class ChessSoft:
         if uci and self.requires_promotion(uci):
             uci += 'q'  # Append 'q' to promote to queen by default
         start_square, end_square = uci[:2], uci[2:4]
-        await self.sequential_sound_play(start_square, end_square)
+        score = await self.evaluate_move(chess.Move.from_uci(uci))
+        print("Score: " + str(score))
+        await self.sequential_sound_play(start_square, end_square, score)
         return uci
+
+    async def evaluate_move(self, move: chess.Move) -> int:
+        """
+        Returns a score from 1 to 5, with 1 being the best move.
+        """
+        transport, engine = await chess.engine.popen_uci("/usr/games/stockfish")
+        info = await engine.analyse(self.board, chess.engine.Limit(time=0.1))
+        pv = info.get("pv")  # Principal variation (best move sequence)
+        if pv is None or len(pv) == 0:
+            await engine.quit()
+            return 5  # Cannot evaluate, so assume the worst score
+        # Generate scores based on the move's ranking within the engine's suggestions
+        try:
+            move_rank = pv.index(move) + 1
+        except ValueError:
+            move_rank = len(pv) + 1  # Move was not in the engine's top suggestions
+        await engine.quit()
+        # Convert move_rank to a score from 1 to 5
+        score = min(5, move_rank)
+        return score
 
     def who(self, player):
         return "whit" if player == chess.WHITE else "blac"
