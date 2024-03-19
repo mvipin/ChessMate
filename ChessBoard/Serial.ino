@@ -173,8 +173,14 @@ void scan_serial() {
   }
 }
 
+// To the host
 void send_response(char resp[]) {
   Serial2.println(resp);
+}
+
+// To the robotic arm
+void send_indication(char ind[]) {
+  Serial1.println(ind);
 }
 
 void serial_init() {

@@ -68,7 +68,7 @@ enum {
 #define MAX_SPEED_Z 1200
 #define REDUCED_SPEED_Z (MAX_SPEED_Z >> 1)
 #define HOMING_SPEED_Z (-REDUCED_SPEED_Z)
-#define HOMING_REDUCED_SPEED_Z (-(MAX_SPEED_Z >> 2))
+#define HOMING_REDUCED_SPEED_Z (-(MAX_SPEED_Z >> 1))
 #define ACCELERATION_Z 1500
 #define Z_MIN 200
 #define Z_MAX 2500
@@ -250,6 +250,26 @@ void home_z()
   while (!digitalRead(LIMIT_SWITCH_Z_PIN)) {
     stepperZ.runSpeed();
   }
+  stepperZ.stop();
+
+  // Locate mode - move slowly away from the switch and then back to engage it slowly
+  stepperZ.move(200); // Move 100 steps away
+  while (stepperZ.distanceToGo() > 0) {
+    stepperZ.run();
+  }
+  delay(100);
+  stepperZ.setSpeed(HOMING_REDUCED_SPEED_Z); // Move back towards the switch slowly
+  while (!digitalRead(LIMIT_SWITCH_Z_PIN)) {
+    stepperZ.runSpeed();
+  }
+  stepperZ.stop();
+
+  // Pull-off motion - move away from the limit switch to disengage it
+  stepperZ.move(50); // Move away from the switch to disengage
+  while (stepperZ.distanceToGo() > 0) {
+    stepperZ.run();
+  }
+
   stepperZ.setCurrentPosition(0); // When limit switch pressed set position to 0 steps
 }
 
@@ -790,6 +810,9 @@ void loop() {
 
     if (c == 'i') {
       idle_move_start = true;
+    } else if (c == 'z') {
+      home_all();
+      curl_up();
     } else if (c == '\n' || c == '\r') {
       // End of line character, ignore it but reset if in buffer
       if(inputBuffer.length() != 0) {

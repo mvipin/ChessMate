@@ -68,7 +68,7 @@ void process_board() {
         reset_occupancy();
         set_control_pixel(HUMAN, BLACK);
         set_control_pixel(COMPUTER, GREEN);
-        Serial1.print("i");
+        send_indication("i");
       } else {
         state = MOVE_RESET;
       }
@@ -84,7 +84,11 @@ void process_board() {
       set_control_pixel(HUMAN, BLACK);
       set_control_pixel(COMPUTER, GREEN);
     } else if (state == MOVE_CHECKMATE) {
+      send_indication("z");
       display_win(special_moves[MOVE_TYPE_CHECKMATE]);
+      state = MOVE_INIT;
+      reset_display();
+      lightup_display();
     }
   }
 }
