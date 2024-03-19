@@ -16,6 +16,7 @@ class ChessSoft:
         self.time = 0.0
         self.serial = ser
         self.treset = False
+        self.prev_comments = []
 
     def random_player(self):
         move = random.choice(list(self.board.legal_moves))
@@ -237,14 +238,31 @@ class ChessSoft:
         else:
             print("No fact wav files found.")
 
+    async def play_comment_or_fact_based_on_history(self, comment_file):
+        # Check if the last two comments were comment_0.wav or comment_1.wav
+        if self.prev_comments[-2:] == ["comment_0.wav", "comment_0.wav"] or \
+           self.prev_comments[-2:] == ["comment_1.wav", "comment_1.wav"] or \
+           self.prev_comments[-2:] == ["comment_0.wav", "comment_1.wav"] or \
+           self.prev_comments[-2:] == ["comment_1.wav", "comment_0.wav"]:
+            # Play a random fact
+            await self.play_random_fact()
+            # Reset the history
+            self.prev_comments = []
+        else:
+            # Play the comment and update the history
+            await self.play_comment(comment_file)
+            self.prev_comments.append(comment_file)
+
     async def sequential_sound_play(self, start_square, end_square, score):
         await self.play_move_sound(start_square, end_square)
         if score >= 1 and score <= 2:
-            await self.play_comment("comment_0.wav")
+            await self.play_comment_or_fact_based_on_history("comment_0.wav")
         elif score >= 3 and score <= 4:
-            await self.play_comment("comment_1.wav")
+            await self.play_comment_or_fact_based_on_history("comment_1.wav")
         else:
+            # Always play a random fact if the score is 5, also reset history
             await self.play_random_fact()
+            self.prev_comments = []
 
     async def human_player(self):
         uci = None
