@@ -1,2 +1,4 @@
-Excellent move
-Good move
+Its an excellent move
+Its a good move
+Its a checkmate
+Its a check

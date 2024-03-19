@@ -139,6 +139,7 @@ class ChessSoft:
         if check != "":
             check_str = "check:" + check + "\n"
             self.serial.write(check_str.encode('utf8'))
+            await self.play_comment("comment_3.wav")
             print(check_str)
         start_str = "start\n"
         self.serial.write(start_str.encode('utf8'))
@@ -219,12 +220,9 @@ class ChessSoft:
 
         await process.wait()  # Wait for the move sound to finish playing
 
-    async def play_move_quality(self, score):
+    async def play_comment(self, comment_file):
         comments_dir = "sounds/comments"
-        if score >= 1 and score <= 2:
-            comment_sound_file = os.path.join(comments_dir, f"comment_0.wav")
-        else:
-            comment_sound_file = os.path.join(comments_dir, f"comment_1.wav")
+        comment_sound_file = os.path.join(comments_dir, comment_file)
         process = await asyncio.create_subprocess_exec('aplay', comment_sound_file)
         await process.wait()  # Wait for the move sound to finish playing
 
@@ -241,8 +239,10 @@ class ChessSoft:
 
     async def sequential_sound_play(self, start_square, end_square, score):
         await self.play_move_sound(start_square, end_square)
-        if score >= 1 and score < 5:
-            await self.play_move_quality(score)
+        if score >= 1 and score <= 2:
+            await self.play_comment("comment_0.wav")
+        elif score >= 3 and score <= 4:
+            await self.play_comment("comment_1.wav")
         else:
             await self.play_random_fact()
 
@@ -335,6 +335,9 @@ class ChessSoft:
         self.board = chess.Board()
         self.treset = False
 
+    def reset_board(self):
+        self.board = None
+
     def reset_target(self):
         self.treset = True
 
@@ -344,7 +347,7 @@ class ChessSoft:
     def game_over(self):
         return self.board.is_game_over(claim_draw=True)
 
-    def show_result(self):
+    async def show_result(self):
         if self.board.is_checkmate():
             occupancy = self.get_occupancy()
             occupancy_str = "occupancy:" + occupancy + "\n"
@@ -354,6 +357,7 @@ class ChessSoft:
             self.serial.write(result_str.encode('utf8'))
             self.menu.show_game_status(result_str)
             print(result_str)
+            await self.play_comment("comment_2.wav")
             '''
             while True:
                 if self.serial.inWaiting():

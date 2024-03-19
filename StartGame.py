@@ -38,7 +38,7 @@ m.render()
 async def job():
     if c.is_game_set():
         if c.game_over():
-            c.show_result()
+            await c.show_result()
             c.reset_board()
             m.reset_menu()
             m.set_selection(0)
