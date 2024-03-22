@@ -13,6 +13,7 @@ c = ChessSoft(ser)
 
 m = Menu(c,
     ["NEW GAME",
+    "PUZZLE",
     "TIME - COMPUTER",
     "TIME - HUMAN",
     "COLOR - HUMAN",

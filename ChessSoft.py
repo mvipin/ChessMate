@@ -353,6 +353,12 @@ class ChessSoft:
         self.board = chess.Board()
         self.treset = False
 
+    def setup_puzzle(self, human_white=True, skill=0, pause=0.1):
+        self.update_skill(skill)
+        self.update_players(human_white)
+        self.board = chess.Board("r2qk2r/pb4pp/1n2Pb2/2B2Q2/p1p5/2P5/2B2PPP/RN2R1K1 w - - 1 0")
+        self.treset = False
+
     def reset_board(self):
         self.board = None
 
