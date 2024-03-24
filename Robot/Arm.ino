@@ -696,7 +696,7 @@ void idle_move()
     i = (i + 1) % 4;
 }
 
-void test_move(String move)
+void execute_move(String move)
 {
   // Move type?
   if ((move[4] != move[5]) || (move[5] == 'x')) {
@@ -760,9 +760,47 @@ void test_pawns_march()
   }
 }
 
-void setup()
+void arm_run()
 {
-  Serial.begin(9600);
+  static String inputBuffer = ""; // Buffer to hold incoming characters
+  static bool idle_move_start = false;
+
+  // Check if data is available to read from chessboard
+  while (chessboard.available()) {
+    char c = chessboard.read(); // Read a character
+    Serial.write(c); // Echo the character to the main serial port for debugging
+
+    if (c == 'i') {
+      idle_move_start = true;
+    } else if (c == 'z') {
+      home_all();
+      curl_up();
+    } else if (c == '\n' || c == '\r') {
+      // End of line character, ignore it but reset if in buffer
+      if(inputBuffer.length() != 0) {
+        Serial.println(F("Incomplete move, resetting buffer."));
+        inputBuffer = ""; // Clear the buffer if we had partial data
+      }
+    } else {
+      inputBuffer += c; // Add character to buffer
+
+      // Check if we have a full move in the buffer
+      if (inputBuffer.length() == 6) {
+        idle_move_start = false;
+        Serial.println("\nInitiating move"); // Move to a new line
+        execute_move(inputBuffer); // Process the move
+        inputBuffer = ""; // Clear the buffer for the next move
+      }
+    }
+  }
+
+  if (idle_move_start) {
+    idle_move();
+  }
+}
+
+void arm_init()
+{
   chessboard.begin(9600);
   static_assert(GRIPPER_OPEN_ANGLE < GRIPPER_CLOSE_ANGLE, "Invalid gripper angle range");
 
@@ -797,42 +835,4 @@ void setup()
   home_all();
   curl_up();
   Serial.println("Robotic Arm initialized");
-}
-
-void loop() {
-  static String inputBuffer = ""; // Buffer to hold incoming characters
-  static bool idle_move_start = false;
-
-  // Check if data is available to read from chessboard
-  while (chessboard.available()) {
-    char c = chessboard.read(); // Read a character
-    Serial.write(c); // Echo the character to the main serial port for debugging
-
-    if (c == 'i') {
-      idle_move_start = true;
-    } else if (c == 'z') {
-      home_all();
-      curl_up();
-    } else if (c == '\n' || c == '\r') {
-      // End of line character, ignore it but reset if in buffer
-      if(inputBuffer.length() != 0) {
-        Serial.println(F("Incomplete move, resetting buffer."));
-        inputBuffer = ""; // Clear the buffer if we had partial data
-      }
-    } else {
-      inputBuffer += c; // Add character to buffer
-
-      // Check if we have a full move in the buffer
-      if (inputBuffer.length() == 6) {
-        idle_move_start = false;
-        Serial.println("\nInitiating move"); // Move to a new line
-        test_move(inputBuffer); // Process the move
-        inputBuffer = ""; // Clear the buffer for the next move
-      }
-    }
-  }
-
-  if (idle_move_start) {
-    idle_move();
-  }
 }
