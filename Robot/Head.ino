@@ -3,109 +3,152 @@
 
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
-enum {
-  SERVO_RIGHT_EYELID,
-  SERVO_RIGHT_EYEBALL,
-  SERVO_RIGHT_HEAD,
-  SERVO_LEFT_EYELID,
-  SERVO_LEFT_EYEBALL,
-  SERVO_LEFT_HEAD,
-  SERVO_NUM_MAX,
-};
-
-typedef struct {
-  uint16_t pulse_min;
-  uint16_t pulse_max;
-  uint16_t degree_low;
-  uint16_t degree_high;
-} servo_cfg_t;
-
 servo_cfg_t servo_cfg[SERVO_NUM_MAX] = {
   {80, 530, 35, 100}, // SERVO_RIGHT_EYELID (0)
   {80, 530, 40, 120}, // SERVO_RIGHT_EYEBALL (1)
-  {100, 500, 0, 180}, // SERVO_RIGHT_HEAD (2)
+  {100, 500, 0, 180}, // SERVO_RIGHT_EYELEVEL (2)
   {80, 530, 80, 135}, // SERVO_LEFT_EYELID (3)
   {80, 530, 55, 140}, // SERVO_LEFT_EYEBALL (4)
-  {100, 500, 0, 180}, // SERVO_LEFT_HEAD (5)
+  {100, 500, 0, 180}, // SERVO_LEFT_EYELEVEL (5)
 };
 
-#define SERVO_FREQ 50 // Analog servos run at ~50 Hz updates
-
-void set_eyeball(bool right, bool left)
+void set_eyeball(dir_t dir, pos_clk_t clk)
 {
-  uint16_t pulselen;
+  float factor;
+  servo_id_t servo_id = (dir == RIGHT) ? SERVO_RIGHT_EYEBALL : SERVO_LEFT_EYEBALL;
+  switch (clk) {
+    case POS_3H: {
+      factor = 1.00f;
+    } break;
+    case POS_2H: {
+      factor = 0.83f;
+    } break;
+    case POS_1H: {
+      factor = 0.66f;
+    } break;
+    case POS_12H: {
+      factor = 0.50f;
+    } break;
+    case POS_11H: {
+      factor = 0.34f;
+    } break;
+    case POS_10H: {
+      factor = 0.17f;
+    } break;
+    case POS_9H: {
+      factor = 0.00f;
+    } break;
+  }
 
-  if (right) {
-    if (left) {
-      pulselen = map(servo_cfg[SERVO_RIGHT_EYEBALL].degree_high, 0, 180, servo_cfg[SERVO_RIGHT_EYEBALL].pulse_min, servo_cfg[SERVO_RIGHT_EYEBALL].pulse_max);
-    } else {
-      pulselen = map(servo_cfg[SERVO_RIGHT_EYEBALL].degree_low, 0, 180, servo_cfg[SERVO_RIGHT_EYEBALL].pulse_min, servo_cfg[SERVO_RIGHT_EYEBALL].pulse_max);
-    }
-    pwm.setPWM(SERVO_RIGHT_EYEBALL, 0, pulselen);
-  } else {
-    if (left) {
-      pulselen = map(servo_cfg[SERVO_LEFT_EYEBALL].degree_low, 0, 180, servo_cfg[SERVO_LEFT_EYEBALL].pulse_min, servo_cfg[SERVO_LEFT_EYEBALL].pulse_max);
-    } else {
-      pulselen = map(servo_cfg[SERVO_LEFT_EYEBALL].degree_high, 0, 180, servo_cfg[SERVO_LEFT_EYEBALL].pulse_min, servo_cfg[SERVO_LEFT_EYEBALL].pulse_max);
-    }
-    pwm.setPWM(SERVO_LEFT_EYEBALL, 0, pulselen);
+  float degrees = servo_cfg[servo_id].degree_low + ((servo_cfg[servo_id].degree_high - servo_cfg[servo_id].degree_low) * factor);
+  uint16_t pulse_len = map(degrees, 0, 180, servo_cfg[servo_id].pulse_min, servo_cfg[servo_id].pulse_max);
+  pwm.setPWM(servo_id, 0, pulse_len);
+}
+
+void set_eyelid(dir_t dir, pos_gap_t gap)
+{
+  float factor;
+  servo_id_t servo_id = (dir == RIGHT) ? SERVO_RIGHT_EYELEVEL : SERVO_LEFT_EYELEVEL;
+  switch (gap) {
+    case FULLY_OPEN: {
+      factor = (dir == RIGHT) ? 1.00f : 0.00f;
+    } break;
+    case PARTIALLY_OPEN: {
+      factor = (dir == RIGHT) ? 0.75f : 0.25f;
+    } break;
+    case HALF_OPEN: {
+      factor = 0.50f;
+    } break;
+    case PARTIALLY_CLOSED: {
+      factor = (dir == RIGHT) ? 0.25f : 0.75f;
+    } break;
+    case FULLY_CLOSED: {
+      factor = (dir == RIGHT) ? 0.00f : 1.00f;
+    } break;
+  }
+
+  float degrees = servo_cfg[servo_id].degree_low + ((servo_cfg[servo_id].degree_high - servo_cfg[servo_id].degree_low) * factor);
+  uint16_t pulse_len = map(degrees, 0, 180, servo_cfg[servo_id].pulse_min, servo_cfg[servo_id].pulse_max);
+  pwm.setPWM(servo_id, 0, pulse_len);
+}
+
+void set_eyelevel(dir_t dir, pos_height_t level)
+{
+  float factor;
+  servo_id_t servo_id = (dir == RIGHT) ? SERVO_RIGHT_EYELEVEL : SERVO_LEFT_EYELEVEL;
+  switch (level) {
+    case FULLY_DOWN: {
+      factor = (dir == RIGHT) ? 1.00f : 0.00f;
+    } break;
+    case LOWER_TILTED: {
+      factor = (dir == RIGHT) ? 0.83f : 0.17f;
+    } break;
+    case SLIGHTLY_TILTED_DOWN: {
+      factor = (dir == RIGHT) ? 0.66f : 0.34f;
+    } break;
+    case NEUTRAL: {
+      factor = 0.50f;
+    } break;
+    case SLIGHTLY_TILTED_UP: {
+      factor = (dir == RIGHT) ? 0.34f : 0.66f;
+    } break;
+    case RAISED_TILTED: {
+      factor = (dir == RIGHT) ? 0.17f : 0.83f;
+    } break;
+    case FULLY_UP: {
+      factor = (dir == RIGHT) ? 0.00f : 1.00f;
+    } break;
+  }
+
+  float degrees = servo_cfg[servo_id].degree_low + ((servo_cfg[servo_id].degree_high - servo_cfg[servo_id].degree_low) * factor);
+  uint16_t pulse_len = map(degrees, 0, 180, servo_cfg[servo_id].pulse_min, servo_cfg[servo_id].pulse_max);
+  pwm.setPWM(servo_id, 0, pulse_len);
+}
+
+void eyelids_test()
+{
+  for (int gap = FULLY_OPEN; gap <= FULLY_CLOSED; gap++) {
+    set_eyelid(LEFT, gap);
+    set_eyelid(RIGHT, gap);
+    delay(500);
+  }
+  for (int gap = FULLY_CLOSED; gap >= FULLY_OPEN; gap--) {
+    set_eyelid(LEFT, gap);
+    set_eyelid(RIGHT, gap);
+    delay(500);
   }
 }
 
-void set_eyelid(bool right, bool open)
+void eyeballs_test()
 {
-  uint16_t pulselen;
-
-  if (right) {
-    if (open) {
-      pulselen = map(servo_cfg[SERVO_RIGHT_EYELID].degree_high, 0, 180, servo_cfg[SERVO_RIGHT_EYELID].pulse_min, servo_cfg[SERVO_RIGHT_EYELID].pulse_max);
-    } else {
-      pulselen = map(servo_cfg[SERVO_RIGHT_EYELID].degree_low, 0, 180, servo_cfg[SERVO_RIGHT_EYELID].pulse_min, servo_cfg[SERVO_RIGHT_EYELID].pulse_max);
-    }
-    pwm.setPWM(SERVO_RIGHT_EYELID, 0, pulselen);
-  } else {
-    if (open) {
-      pulselen = map(servo_cfg[SERVO_LEFT_EYELID].degree_high, 0, 180, servo_cfg[SERVO_LEFT_EYELID].pulse_min, servo_cfg[SERVO_LEFT_EYELID].pulse_max);
-    } else {
-      pulselen = map(servo_cfg[SERVO_LEFT_EYELID].degree_low, 0, 180, servo_cfg[SERVO_LEFT_EYELID].pulse_min, servo_cfg[SERVO_LEFT_EYELID].pulse_max);
-    }
-    pwm.setPWM(SERVO_LEFT_EYELID, 0, pulselen);
+  set_eyelid(LEFT, FULLY_OPEN);
+  set_eyelid(RIGHT, FULLY_OPEN);
+  for (int clk = POS_3H; clk <= POS_9H; clk++) {
+    set_eyeball(LEFT, clk);
+    set_eyeball(RIGHT, clk);
+    delay(500);
+  }
+  for (int clk = POS_9H; clk >= POS_3H; clk--) {
+    set_eyeball(LEFT, clk);
+    set_eyeball(RIGHT, clk);
+    delay(500);
   }
 }
 
-void head_test()
+void set_eyelevel_test()
 {
-  static uint8_t servonum = SERVO_RIGHT_EYELID;
-  uint16_t pulselen;
-
-  // Drive each servo one at a time using setPWM()
-  Serial.println(servonum);
-#if 1
-  for (uint8_t degrees = servo_cfg[servonum].degree_low; degrees < servo_cfg[servonum].degree_high; degrees++) {
-    pulselen = map(degrees, 0, 180, servo_cfg[servonum].pulse_min, servo_cfg[servonum].pulse_max);
-    pwm.setPWM(servonum, 0, pulselen);
-    delay(50);
-  }
-#else
-    pulselen = map(servo_cfg[servonum].degree_high, 0, 180, servo_cfg[servonum].pulse_min, servo_cfg[servonum].pulse_max);
-    pwm.setPWM(servonum, 0, pulselen);
+  set_eyelid(LEFT, HALF_OPEN);
+  set_eyelid(RIGHT, HALF_OPEN);
+  for (int level = FULLY_DOWN; level <= FULLY_UP; level++) {
+    set_eyelevel(LEFT, level);
+    set_eyelevel(RIGHT, level);
     delay(1000);
-#endif
-
-#if 1
-  for (uint16_t degrees = servo_cfg[servonum].degree_high; degrees > servo_cfg[servonum].degree_low; degrees--) {
-    pulselen = map(degrees, 0, 180, servo_cfg[servonum].pulse_min, servo_cfg[servonum].pulse_max);
-    pwm.setPWM(servonum, 0, pulselen);
-    delay(50);
   }
-#else
-    pulselen = map(servo_cfg[servonum].degree_low, 0, 180, servo_cfg[servonum].pulse_min, servo_cfg[servonum].pulse_max);
-    pwm.setPWM(servonum, 0, pulselen);
+  for (int level = FULLY_UP; level >= FULLY_DOWN; level--) {
+    set_eyelevel(LEFT, level);
+    set_eyelevel(RIGHT, level);
     delay(1000);
-#endif
-
-  servonum++;
-  if (servonum >= SERVO_NUM_MAX) servonum = 0;
+  }
 }
 
 void head_init()
