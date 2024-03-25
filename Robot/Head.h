@@ -4,8 +4,8 @@
 #define SERVO_FREQ 50 // Analog servos run at ~50 Hz updates
 
 typedef enum {
-  LEFT,
-  RIGHT,
+  EYE_LEFT,
+  EYE_RIGHT,
 } dir_t;
 
 typedef enum {
@@ -19,13 +19,13 @@ typedef enum {
 } servo_id_t;
 
 typedef enum {
-  POS_3H,
-  POS_2H,
-  POS_1H,
-  POS_12H,
-  POS_11H,
-  POS_10H,
-  POS_9H,
+  FULLY_RIGHT,
+  PARTIALLY_RIGHT,
+  SLIGHTLY_RIGHT,
+  CENTER,
+  SLIGHTLY_LEFT,
+  PARTIALLY_LEFT,
+  FULLY_LEFT,
 } pos_clk_t;
 
 typedef enum {
