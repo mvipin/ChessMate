@@ -1,4 +1,7 @@
+#include "Arm.h"
 #include "Head.h"
+
+bool animation_start;
 
 void setup()
 {

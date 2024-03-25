@@ -6,16 +6,6 @@
 #include <EEPROM.h>
 #include <SoftwareSerial.h>
 
-enum {
-  PIECE_TYPE_PAWN,
-  PIECE_TYPE_ROOK,
-  PIECE_TYPE_KNIGHT,
-  PIECE_TYPE_BISHOP,
-  PIECE_TYPE_QUEEN,
-  PIECE_TYPE_KING,
-  PIECE_TYPE_NUM,
-};
-
 #undef MULTISTEPPER_ENABLED //change to #undef if we want the motors to accelerate/decelerate
 
 #define STEPPER_X_STP_PIN 2
@@ -154,6 +144,7 @@ void move_xy_to(double x_deg, double y_deg)
   while ((stepperX.currentPosition() != x_steps) || (stepperY.currentPosition() != y_steps)) {
     stepperX.run();
     stepperY.run();
+    animate();
   }
 #endif
 }
@@ -164,6 +155,7 @@ void move_x_to(double degree)
   stepperX.moveTo(steps);
   while (stepperX.currentPosition() != steps) {
     stepperX.run();
+    animate();
   }
 }
 
@@ -173,6 +165,7 @@ void move_y_to(double degree)
   stepperY.moveTo(steps);
   while (stepperY.currentPosition() != steps) {
     stepperY.run();
+    animate();
   }
 }
 
@@ -181,6 +174,7 @@ void move_z_to(long steps)
   stepperZ.moveTo(steps);
   while (stepperZ.currentPosition() != steps) {
     stepperZ.run();
+    animate();
   }
 }
 
@@ -190,6 +184,7 @@ void home_x()
   stepperX.setSpeed(HOMING_SPEED_X);
   while (!digitalRead(LIMIT_SWITCH_X_PIN)) {
     stepperX.runSpeed();
+    animate();
   }
   stepperX.stop();
 
@@ -197,11 +192,13 @@ void home_x()
   stepperX.move(200); // Move 100 steps away
   while (stepperX.distanceToGo() > 0) {
     stepperX.run();
+    animate();
   }
   delay(100);
   stepperX.setSpeed(HOMING_REDUCED_SPEED_X); // Move back towards the switch slowly
   while (!digitalRead(LIMIT_SWITCH_X_PIN)) {
     stepperX.runSpeed();
+    animate();
   }
   stepperX.stop();
 
@@ -209,6 +206,7 @@ void home_x()
   stepperX.move(50); // Move away from the switch to disengage
   while (stepperX.distanceToGo() > 0) {
     stepperX.run();
+    animate();
   }
 
   stepperX.setCurrentPosition(0); // When limit switch pressed set position to 0 steps
@@ -220,6 +218,7 @@ void home_y()
   stepperY.setSpeed(HOMING_SPEED_Y);
   while (!digitalRead(LIMIT_SWITCH_Y_PIN)) {
     stepperY.runSpeed();
+    animate();
   }
   stepperY.stop();
 
@@ -227,11 +226,13 @@ void home_y()
   stepperY.move(200); // Move 100 steps away
   while (stepperY.distanceToGo() > 0) {
     stepperY.run();
+    animate();
   }
   delay(100);
   stepperY.setSpeed(HOMING_REDUCED_SPEED_Y); // Move back towards the switch slowly
   while (!digitalRead(LIMIT_SWITCH_Y_PIN)) {
     stepperY.runSpeed();
+    animate();
   }
   stepperY.stop();
 
@@ -239,6 +240,7 @@ void home_y()
   stepperY.move(50); // Move away from the switch to disengage
   while (stepperY.distanceToGo() > 0) {
     stepperY.run();
+    animate();
   }
 
   stepperY.setCurrentPosition(0); // When limit switch pressed set position to 0 steps
@@ -249,6 +251,7 @@ void home_z()
   stepperZ.setSpeed(HOMING_SPEED_Z);
   while (!digitalRead(LIMIT_SWITCH_Z_PIN)) {
     stepperZ.runSpeed();
+    animate();
   }
   stepperZ.stop();
 
@@ -256,11 +259,13 @@ void home_z()
   stepperZ.move(200); // Move 100 steps away
   while (stepperZ.distanceToGo() > 0) {
     stepperZ.run();
+    animate();
   }
   delay(100);
   stepperZ.setSpeed(HOMING_REDUCED_SPEED_Z); // Move back towards the switch slowly
   while (!digitalRead(LIMIT_SWITCH_Z_PIN)) {
     stepperZ.runSpeed();
+    animate();
   }
   stepperZ.stop();
 
@@ -268,6 +273,7 @@ void home_z()
   stepperZ.move(50); // Move away from the switch to disengage
   while (stepperZ.distanceToGo() > 0) {
     stepperZ.run();
+    animate();
   }
 
   stepperZ.setCurrentPosition(0); // When limit switch pressed set position to 0 steps
@@ -440,7 +446,7 @@ void xy_lookup(uint8_t index, double *x, double *y)
   *y = y_lower * (1 - y_fraction) + y_upper * y_fraction;
 }
 
-uint32_t adjusted_z_min(uint8_t piece, uint8_t row)
+uint32_t adjusted_z_min(piece_type_t piece, uint8_t row)
 {
   // TODO The nomenclature for 'row' is reverse in robotic arm. Need to make it consistent with chess board.
   uint32_t zmin = z_min[piece] - ((CHESS_ROWS - 1 - row) * 25);
@@ -453,7 +459,7 @@ uint32_t adjusted_z_min(uint8_t piece, uint8_t row)
 
 uint8_t piece_type(char p)
 {
-  uint8_t piece;
+  piece_type_t piece;
   switch (p) {
     case 'p': {
       piece = PIECE_TYPE_PAWN;
@@ -772,6 +778,7 @@ void arm_run()
 
     if (c == 'i') {
       idle_move_start = true;
+      animation_start = true;
     } else if (c == 'z') {
       home_all();
       curl_up();
@@ -787,6 +794,7 @@ void arm_run()
       // Check if we have a full move in the buffer
       if (inputBuffer.length() == 6) {
         idle_move_start = false;
+        animation_start = false;
         Serial.println("\nInitiating move"); // Move to a new line
         execute_move(inputBuffer); // Process the move
         inputBuffer = ""; // Clear the buffer for the next move

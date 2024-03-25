@@ -1,0 +1,14 @@
+#ifndef ARM_H
+#define ARM_H
+
+typedef enum {
+  PIECE_TYPE_PAWN,
+  PIECE_TYPE_ROOK,
+  PIECE_TYPE_KNIGHT,
+  PIECE_TYPE_BISHOP,
+  PIECE_TYPE_QUEEN,
+  PIECE_TYPE_KING,
+  PIECE_TYPE_NUM,
+} piece_type_t;
+
+#endif // ARM_H

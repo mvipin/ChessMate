@@ -1,8 +1,6 @@
 #ifndef HEAD_H
 #define HEAD_H
 
-#define SERVO_FREQ 50 // Analog servos run at ~50 Hz updates
-
 typedef enum {
   EYE_LEFT,
   EYE_RIGHT,

@@ -1,6 +1,8 @@
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 
+#define SERVO_FREQ 50 // Analog servos run at ~50 Hz updates
+
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
 servo_cfg_t servo_cfg[SERVO_NUM_MAX] = {
@@ -153,34 +155,87 @@ void eyelevel_test()
 
 void expression_1()
 {
-  set_eyelid(EYE_LEFT, FULLY_OPEN);
-  set_eyelid(EYE_RIGHT, FULLY_OPEN);
-  set_eyeball(EYE_LEFT, CENTER);
-  set_eyeball(EYE_RIGHT, CENTER);
-  set_eyelevel(EYE_LEFT, SLIGHTLY_TILTED_DOWN);
-  set_eyelevel(EYE_RIGHT, SLIGHTLY_TILTED_UP);
-  delay(700);
-  set_eyelevel(EYE_LEFT, NEUTRAL);
-  set_eyelevel(EYE_RIGHT, NEUTRAL);
-  delay(700);
-  set_eyelevel(EYE_LEFT, SLIGHTLY_TILTED_UP);
-  set_eyelevel(EYE_RIGHT, SLIGHTLY_TILTED_DOWN);
-  delay(700);
-  set_eyelevel(EYE_RIGHT, NEUTRAL);
-  set_eyelevel(EYE_LEFT, NEUTRAL);
-  delay(700);
-  set_eyeball(EYE_RIGHT, FULLY_RIGHT);
-  set_eyeball(EYE_LEFT, FULLY_RIGHT);
-  delay(700);
-  set_eyeball(EYE_RIGHT, CENTER);
-  set_eyeball(EYE_LEFT, CENTER);
-  delay(700);
-  set_eyeball(EYE_RIGHT, FULLY_LEFT);
-  set_eyeball(EYE_LEFT, FULLY_LEFT);
-  delay(700);
-  set_eyeball(EYE_RIGHT, CENTER);
-  set_eyeball(EYE_LEFT, CENTER);
-  delay(700);
+  static uint32_t previousMillis = 0;
+  static int step = 0;
+  uint32_t currentMillis = millis();
+
+  switch (step) {
+    case 0: {
+      if (currentMillis - previousMillis >= 700) {
+        set_eyelid(EYE_LEFT, FULLY_OPEN);
+        set_eyelid(EYE_RIGHT, FULLY_OPEN);
+        set_eyeball(EYE_LEFT, CENTER);
+        set_eyeball(EYE_RIGHT, CENTER);
+        set_eyelevel(EYE_LEFT, SLIGHTLY_TILTED_DOWN);
+        set_eyelevel(EYE_RIGHT, SLIGHTLY_TILTED_UP);
+        previousMillis = currentMillis;
+        step = 1;
+      }
+    } break;
+    case 1: {
+      if (currentMillis - previousMillis >= 700) {
+        set_eyelevel(EYE_LEFT, NEUTRAL);
+        set_eyelevel(EYE_RIGHT, NEUTRAL);
+        previousMillis = currentMillis;
+        step = 2;
+      }
+    }  break;
+    case 2: {
+      if (currentMillis - previousMillis >= 700) {
+        set_eyelevel(EYE_LEFT, SLIGHTLY_TILTED_UP);
+        set_eyelevel(EYE_RIGHT, SLIGHTLY_TILTED_DOWN);
+        previousMillis = currentMillis;
+        step = 3;
+      }
+    } break;
+    case 3: {
+      if (currentMillis - previousMillis >= 700) {
+        set_eyelevel(EYE_RIGHT, NEUTRAL);
+        set_eyelevel(EYE_LEFT, NEUTRAL);
+        previousMillis = currentMillis;
+        step = 4;
+      }
+    } break;
+    case 4: {
+      if (currentMillis - previousMillis >= 700) {
+        set_eyeball(EYE_RIGHT, FULLY_RIGHT);
+        set_eyeball(EYE_LEFT, FULLY_RIGHT);
+        previousMillis = currentMillis;
+        step = 5;
+      }
+    } break;
+    case 5: {
+      if (currentMillis - previousMillis >= 700) {
+        set_eyeball(EYE_RIGHT, CENTER);
+        set_eyeball(EYE_LEFT, CENTER);
+        previousMillis = currentMillis;
+        step = 6;
+      }
+    } break;
+    case 6: {
+      if (currentMillis - previousMillis >= 700) {
+        set_eyeball(EYE_RIGHT, FULLY_LEFT);
+        set_eyeball(EYE_LEFT, FULLY_LEFT);
+        previousMillis = currentMillis;
+        step = 7;
+      }
+    } break;
+    case 7: {
+      if (currentMillis - previousMillis >= 700) {
+        set_eyeball(EYE_RIGHT, CENTER);
+        set_eyeball(EYE_LEFT, CENTER);
+        previousMillis = currentMillis;
+        step = 0; // Reset state to 0 or remove this to stop repeating
+      }
+    } break;
+  }
+}
+
+void animate()
+{
+  if (animation_start) {
+    expression_1();
+  }
 }
 
 void head_init()
