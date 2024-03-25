@@ -44,7 +44,7 @@ typedef enum {
   SLIGHTLY_TILTED_UP,
   RAISED_TILTED,
   FULLY_UP,
-} pos_height_t;
+} pos_level_t;
 
 typedef struct {
   uint16_t pulse_min;

@@ -72,7 +72,7 @@ void set_eyelid(dir_t dir, pos_gap_t gap)
   pwm.setPWM(servo_id, 0, pulse_len);
 }
 
-void set_eyelevel(dir_t dir, pos_height_t level)
+void set_eyelevel(dir_t dir, pos_level_t level)
 {
   float factor;
   servo_id_t servo_id = (dir == EYE_RIGHT) ? SERVO_RIGHT_EYELEVEL : SERVO_LEFT_EYELEVEL;
@@ -149,6 +149,38 @@ void eyelevel_test()
     set_eyelevel(EYE_RIGHT, level);
     delay(1000);
   }
+}
+
+void expression_1()
+{
+  set_eyelid(EYE_LEFT, FULLY_OPEN);
+  set_eyelid(EYE_RIGHT, FULLY_OPEN);
+  set_eyeball(EYE_LEFT, CENTER);
+  set_eyeball(EYE_RIGHT, CENTER);
+  set_eyelevel(EYE_LEFT, SLIGHTLY_TILTED_DOWN);
+  set_eyelevel(EYE_RIGHT, SLIGHTLY_TILTED_UP);
+  delay(700);
+  set_eyelevel(EYE_LEFT, NEUTRAL);
+  set_eyelevel(EYE_RIGHT, NEUTRAL);
+  delay(700);
+  set_eyelevel(EYE_LEFT, SLIGHTLY_TILTED_UP);
+  set_eyelevel(EYE_RIGHT, SLIGHTLY_TILTED_DOWN);
+  delay(700);
+  set_eyelevel(EYE_RIGHT, NEUTRAL);
+  set_eyelevel(EYE_LEFT, NEUTRAL);
+  delay(700);
+  set_eyeball(EYE_RIGHT, FULLY_RIGHT);
+  set_eyeball(EYE_LEFT, FULLY_RIGHT);
+  delay(700);
+  set_eyeball(EYE_RIGHT, CENTER);
+  set_eyeball(EYE_LEFT, CENTER);
+  delay(700);
+  set_eyeball(EYE_RIGHT, FULLY_LEFT);
+  set_eyeball(EYE_LEFT, FULLY_LEFT);
+  delay(700);
+  set_eyeball(EYE_RIGHT, CENTER);
+  set_eyeball(EYE_LEFT, CENTER);
+  delay(700);
 }
 
 void head_init()
