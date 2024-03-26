@@ -6,18 +6,17 @@
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
 servo_cfg_t servo_cfg[SERVO_NUM_MAX] = {
-  {80, 530, 35, 100}, // SERVO_RIGHT_EYELID (0)
-  {80, 530, 40, 120}, // SERVO_RIGHT_EYEBALL (1)
-  {100, 500, 0, 180}, // SERVO_RIGHT_EYELEVEL (2)
-  {80, 530, 80, 135}, // SERVO_LEFT_EYELID (3)
-  {80, 530, 55, 140}, // SERVO_LEFT_EYEBALL (4)
-  {100, 500, 0, 180}, // SERVO_LEFT_EYELEVEL (5)
+  {80, 530, 35, 100, 67}, // SERVO_RIGHT_EYELID (0)
+  {80, 530, 40, 120, 80}, // SERVO_RIGHT_EYEBALL (1)
+  {100, 500, 0, 180, 90}, // SERVO_RIGHT_EYELEVEL (2)
+  {80, 530, 80, 135, 107}, // SERVO_LEFT_EYELID (3)
+  {80, 530, 55, 140, 97}, // SERVO_LEFT_EYEBALL (4)
+  {100, 500, 0, 180, 90}, // SERVO_LEFT_EYELEVEL (5)
 };
 
-void set_eyeball(dir_t dir, pos_clk_t clk)
+void set_eyeball(eye_t eye, pos_clk_t clk)
 {
   float factor;
-  servo_id_t servo_id = (dir == EYE_RIGHT) ? SERVO_RIGHT_EYEBALL : SERVO_LEFT_EYEBALL;
   switch (clk) {
     case FULLY_RIGHT: {
       factor = 1.00f;
@@ -42,69 +41,74 @@ void set_eyeball(dir_t dir, pos_clk_t clk)
     } break;
   }
 
-  float degrees = servo_cfg[servo_id].degree_low + ((servo_cfg[servo_id].degree_high - servo_cfg[servo_id].degree_low) * factor);
+  servo_id_t servo_id = (eye == EYE_RIGHT) ? SERVO_RIGHT_EYEBALL : SERVO_LEFT_EYEBALL;
+  uint16_t degrees = (uint16_t)(servo_cfg[servo_id].degree_low + ((servo_cfg[servo_id].degree_high - servo_cfg[servo_id].degree_low) * factor));
   uint16_t pulse_len = map(degrees, 0, 180, servo_cfg[servo_id].pulse_min, servo_cfg[servo_id].pulse_max);
   pwm.setPWM(servo_id, 0, pulse_len);
+
+  servo_cfg[servo_id].degree_cur = degrees;
 }
 
-void set_eyelid(dir_t dir, pos_gap_t gap)
+void set_eyelid(eye_t eye, pos_gap_t gap)
 {
   float factor;
-  servo_id_t servo_id = (dir == EYE_RIGHT) ? SERVO_RIGHT_EYELID : SERVO_LEFT_EYELID;
   switch (gap) {
     case FULLY_OPEN: {
-      factor = (dir == EYE_RIGHT) ? 1.00f : 0.00f;
+      factor = (eye == EYE_RIGHT) ? 1.00f : 0.00f;
     } break;
     case PARTIALLY_OPEN: {
-      factor = (dir == EYE_RIGHT) ? 0.75f : 0.25f;
+      factor = (eye == EYE_RIGHT) ? 0.75f : 0.25f;
     } break;
     case HALF_OPEN: {
       factor = 0.50f;
     } break;
     case PARTIALLY_CLOSED: {
-      factor = (dir == EYE_RIGHT) ? 0.25f : 0.75f;
+      factor = (eye == EYE_RIGHT) ? 0.25f : 0.75f;
     } break;
     case FULLY_CLOSED: {
-      factor = (dir == EYE_RIGHT) ? 0.00f : 1.00f;
+      factor = (eye == EYE_RIGHT) ? 0.00f : 1.00f;
     } break;
   }
 
+  servo_id_t servo_id = (eye == EYE_RIGHT) ? SERVO_RIGHT_EYELID : SERVO_LEFT_EYELID;
   float degrees = servo_cfg[servo_id].degree_low + ((servo_cfg[servo_id].degree_high - servo_cfg[servo_id].degree_low) * factor);
   uint16_t pulse_len = map(degrees, 0, 180, servo_cfg[servo_id].pulse_min, servo_cfg[servo_id].pulse_max);
   pwm.setPWM(servo_id, 0, pulse_len);
+  servo_cfg[servo_id].degree_cur = degrees;
 }
 
-void set_eyelevel(dir_t dir, pos_level_t level)
+void set_eyelevel(eye_t eye, pos_level_t level)
 {
   float factor;
-  servo_id_t servo_id = (dir == EYE_RIGHT) ? SERVO_RIGHT_EYELEVEL : SERVO_LEFT_EYELEVEL;
   switch (level) {
     case FULLY_DOWN: {
-      factor = (dir == EYE_RIGHT) ? 1.00f : 0.00f;
+      factor = (eye == EYE_RIGHT) ? 1.00f : 0.00f;
     } break;
     case LOWER_TILTED: {
-      factor = (dir == EYE_RIGHT) ? 0.83f : 0.17f;
+      factor = (eye == EYE_RIGHT) ? 0.83f : 0.17f;
     } break;
     case SLIGHTLY_TILTED_DOWN: {
-      factor = (dir == EYE_RIGHT) ? 0.66f : 0.34f;
+      factor = (eye == EYE_RIGHT) ? 0.66f : 0.34f;
     } break;
     case NEUTRAL: {
       factor = 0.50f;
     } break;
     case SLIGHTLY_TILTED_UP: {
-      factor = (dir == EYE_RIGHT) ? 0.34f : 0.66f;
+      factor = (eye == EYE_RIGHT) ? 0.34f : 0.66f;
     } break;
     case RAISED_TILTED: {
-      factor = (dir == EYE_RIGHT) ? 0.17f : 0.83f;
+      factor = (eye == EYE_RIGHT) ? 0.17f : 0.83f;
     } break;
     case FULLY_UP: {
-      factor = (dir == EYE_RIGHT) ? 0.00f : 1.00f;
+      factor = (eye == EYE_RIGHT) ? 0.00f : 1.00f;
     } break;
   }
 
+  servo_id_t servo_id = (eye == EYE_RIGHT) ? SERVO_RIGHT_EYELEVEL : SERVO_LEFT_EYELEVEL;
   float degrees = servo_cfg[servo_id].degree_low + ((servo_cfg[servo_id].degree_high - servo_cfg[servo_id].degree_low) * factor);
   uint16_t pulse_len = map(degrees, 0, 180, servo_cfg[servo_id].pulse_min, servo_cfg[servo_id].pulse_max);
   pwm.setPWM(servo_id, 0, pulse_len);
+  servo_cfg[servo_id].degree_cur = degrees;
 }
 
 void eyelids_test()
@@ -229,6 +233,61 @@ void expression_1()
       }
     } break;
   }
+}
+
+void expression_2()
+{
+#define DELAY 300
+
+  // Write your code here
+  set_eyelevel(EYE_RIGHT, FULLY_DOWN);
+  set_eyelevel(EYE_LEFT, FULLY_DOWN);
+  set_eyelid(EYE_RIGHT, PARTIALLY_CLOSED);
+  set_eyelid(EYE_LEFT, PARTIALLY_CLOSED);
+  set_eyeball(EYE_RIGHT, CENTER);
+  set_eyeball(EYE_LEFT, CENTER);
+  delay(DELAY);
+  set_eyeball(EYE_RIGHT, SLIGHTLY_LEFT);
+  set_eyeball(EYE_LEFT, SLIGHTLY_LEFT);
+  delay(DELAY);
+  set_eyeball(EYE_RIGHT, PARTIALLY_LEFT);
+  set_eyeball(EYE_LEFT, PARTIALLY_LEFT);
+  delay(DELAY);
+  set_eyeball(EYE_RIGHT, SLIGHTLY_LEFT);
+  set_eyeball(EYE_LEFT, SLIGHTLY_LEFT);
+  delay(DELAY);
+  set_eyeball(EYE_RIGHT, CENTER);
+  set_eyeball(EYE_LEFT, CENTER); 
+  delay(DELAY);
+  set_eyeball(EYE_RIGHT, SLIGHTLY_RIGHT);
+  set_eyeball(EYE_LEFT, SLIGHTLY_RIGHT);
+  delay(DELAY);
+  set_eyeball(EYE_RIGHT, PARTIALLY_RIGHT);
+  set_eyeball(EYE_LEFT, PARTIALLY_RIGHT);
+  delay(DELAY);
+  set_eyeball(EYE_RIGHT, SLIGHTLY_RIGHT);
+  set_eyeball(EYE_LEFT, SLIGHTLY_RIGHT);
+  delay(DELAY);
+}
+
+void expression_3()
+{
+  set_eyelevel(EYE_RIGHT, LOWER_TILTED);
+  set_eyelevel(EYE_LEFT, SLIGHTLY_TILTED_UP);
+  set_eyelid(EYE_RIGHT, FULLY_CLOSED);
+  set_eyelid(EYE_LEFT, FULLY_CLOSED);
+  delay(1000);
+  set_eyelid(EYE_RIGHT, PARTIALLY_CLOSED);
+  set_eyelid(EYE_LEFT, PARTIALLY_CLOSED);
+  delay(1000);
+  set_eyelid(EYE_RIGHT, FULLY_CLOSED);
+  set_eyelid(EYE_LEFT, FULLY_CLOSED);
+  delay(5000);
+  set_eyelevel(EYE_RIGHT, RAISED_TILTED);
+  set_eyelevel(EYE_LEFT, RAISED_TILTED);
+  set_eyelid(EYE_RIGHT, FULLY_OPEN);
+  set_eyelid(EYE_LEFT, FULLY_OPEN);
+  delay(5000);
 }
 
 void animate()

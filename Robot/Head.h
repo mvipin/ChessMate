@@ -4,7 +4,7 @@
 typedef enum {
   EYE_LEFT,
   EYE_RIGHT,
-} dir_t;
+} eye_t;
 
 typedef enum {
   SERVO_RIGHT_EYELID,
@@ -49,6 +49,7 @@ typedef struct {
   uint16_t pulse_max;
   uint16_t degree_low;
   uint16_t degree_high;
+  uint16_t degree_cur;
 } servo_cfg_t;
 
 #endif // HEAD_H
