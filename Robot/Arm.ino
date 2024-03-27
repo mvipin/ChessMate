@@ -650,10 +650,10 @@ void move_to_square(String sq)
   double angles[2];
   int address = EEPROM_START_ADDRESS + index * ANGLE_DATA_SIZE;
   EEPROM.get(address, angles);
-  Serial.print(F("Source square angles: Theta1 = "));
-  Serial.print(angles[0], 6);
-  Serial.print(F(", Theta2 = "));
-  Serial.println(angles[1], 6);
+  //Serial.print(F("Source square angles: Theta1 = "));
+  //Serial.print(angles[0], 6);
+  //Serial.print(F(", Theta2 = "));
+  //Serial.println(angles[1], 6);
   move_xy_to(angles[0], angles[1] - ((90-angles[0])/PULLEY_RATIO));
 }
 

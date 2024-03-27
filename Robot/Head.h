@@ -49,6 +49,7 @@ typedef struct {
   uint16_t pulse_max;
   uint16_t degree_low;
   uint16_t degree_high;
+  unsigned long update_ts;
   uint16_t degree_cur;
 } servo_cfg_t;
 
