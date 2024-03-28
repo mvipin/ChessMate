@@ -221,6 +221,13 @@ class ChessSoft:
 
         await process.wait()  # Wait for the move sound to finish playing
 
+    def play_comment_sync(self, comment_file):
+        comments_dir = "sounds/comments"
+        comment_sound_file = os.path.join(comments_dir, comment_file)
+
+        # Use subprocess.run to play the comment file synchronously
+        subprocess.run(['aplay', comment_sound_file], check=True)
+
     async def play_comment(self, comment_file):
         comments_dir = "sounds/comments"
         comment_sound_file = os.path.join(comments_dir, comment_file)
@@ -358,6 +365,7 @@ class ChessSoft:
         self.update_players(human_white)
         self.board = chess.Board("r2qk2r/pb4pp/1n2Pb2/2B2Q2/p1p5/2P5/2B2PPP/RN2R1K1 w - - 1 0")
         self.treset = False
+        self.play_comment_sync("comment_4.wav")
 
     def reset_board(self):
         self.board = None
