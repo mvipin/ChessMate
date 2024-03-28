@@ -758,6 +758,7 @@ void arm_run()
 {
   static String inputBuffer = ""; // Buffer to hold incoming characters
   static bool idle_move_start = false;
+  static bool skip_first = true;
 
   // Check if data is available to read from chessboard
   while (chessboard.available()) {
@@ -771,9 +772,13 @@ void arm_run()
     } else if (c == 'z') {
       home_all();
       curl_up();
+      skip_first = true;
     } else if (c == 's') {
       // Start of player's turn. Doze off if not received 'i' in 10 sec
-      animation_id = DOZE_OFF;
+      if (!skip_first) {
+        animation_id = DOZE_OFF;
+      }
+      skip_first = false;
     } else if (c == '\n' || c == '\r') {
       // End of line character, ignore it but reset if in buffer
       if (inputBuffer.length() != 0) {
