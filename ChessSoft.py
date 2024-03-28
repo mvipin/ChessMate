@@ -16,6 +16,7 @@ class ChessSoft:
         self.time = 0.0
         self.serial = ser
         self.treset = False
+        self.snore = False
         self.prev_comments = []
 
     def random_player(self):
@@ -120,6 +121,10 @@ class ChessSoft:
         return result_string
 
     async def get_move(self):
+        start_time = time.time()
+        move_timeout = 20  # seconds
+        hint_timeout_reached = False
+
         legal_uci_moves = [move.uci() for move in self.board.legal_moves]
         occupancy = self.get_occupancy()
         occupancy_str = "occupancy:" + occupancy + "\n"
@@ -149,8 +154,13 @@ class ChessSoft:
         while True:
             if self.serial.inWaiting():
                 line=self.serial.readline()
+                uci = line.decode('utf8').strip()
                 break
-        uci = line.decode('utf8').strip()
+            elif not hint_timeout_reached and self.snore and time.time() - start_time > move_timeout:
+                asyncio.create_task(self.play_comment("snore.wav"))
+                hint_timeout_reached = True
+            await asyncio.sleep(0.1)  # Add a small sleep to prevent a tight loop
+
         if uci == 'ffff': # special move from board indicating override
             # Get it from the LCD menu
             uci = self.menu.get_manual_override().strip()
@@ -359,12 +369,14 @@ class ChessSoft:
         self.update_players(human_white)
         self.board = chess.Board()
         self.treset = False
+        self.snore = False
 
     def setup_puzzle(self, human_white=True, skill=0, pause=0.1):
         self.update_skill(skill)
         self.update_players(human_white)
         self.board = chess.Board("r2qk2r/pb4pp/1n2Pb2/2B2Q2/p1p5/2P5/2B2PPP/RN2R1K1 w - - 1 0")
         self.treset = False
+        self.snore = False
         self.play_comment_sync("comment_4.wav")
 
     def reset_board(self):
@@ -409,6 +421,7 @@ class ChessSoft:
             uci = await self.player1()
         else:
             uci = await self.player2()
+        self.snore = True
         self.board.push_uci(uci)
         print(self.board)
 
