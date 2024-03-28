@@ -184,7 +184,6 @@ void home_x()
   stepperX.setSpeed(HOMING_SPEED_X);
   while (!digitalRead(LIMIT_SWITCH_X_PIN)) {
     stepperX.runSpeed();
-    animate();
   }
   stepperX.stop();
 
@@ -192,13 +191,11 @@ void home_x()
   stepperX.move(200); // Move 100 steps away
   while (stepperX.distanceToGo() > 0) {
     stepperX.run();
-    animate();
   }
   delay(100);
   stepperX.setSpeed(HOMING_REDUCED_SPEED_X); // Move back towards the switch slowly
   while (!digitalRead(LIMIT_SWITCH_X_PIN)) {
     stepperX.runSpeed();
-    animate();
   }
   stepperX.stop();
 
@@ -206,7 +203,6 @@ void home_x()
   stepperX.move(50); // Move away from the switch to disengage
   while (stepperX.distanceToGo() > 0) {
     stepperX.run();
-    animate();
   }
 
   stepperX.setCurrentPosition(0); // When limit switch pressed set position to 0 steps
@@ -218,7 +214,6 @@ void home_y()
   stepperY.setSpeed(HOMING_SPEED_Y);
   while (!digitalRead(LIMIT_SWITCH_Y_PIN)) {
     stepperY.runSpeed();
-    animate();
   }
   stepperY.stop();
 
@@ -226,13 +221,11 @@ void home_y()
   stepperY.move(200); // Move 100 steps away
   while (stepperY.distanceToGo() > 0) {
     stepperY.run();
-    animate();
   }
   delay(100);
   stepperY.setSpeed(HOMING_REDUCED_SPEED_Y); // Move back towards the switch slowly
   while (!digitalRead(LIMIT_SWITCH_Y_PIN)) {
     stepperY.runSpeed();
-    animate();
   }
   stepperY.stop();
 
@@ -240,7 +233,6 @@ void home_y()
   stepperY.move(50); // Move away from the switch to disengage
   while (stepperY.distanceToGo() > 0) {
     stepperY.run();
-    animate();
   }
 
   stepperY.setCurrentPosition(0); // When limit switch pressed set position to 0 steps
@@ -251,7 +243,6 @@ void home_z()
   stepperZ.setSpeed(HOMING_SPEED_Z);
   while (!digitalRead(LIMIT_SWITCH_Z_PIN)) {
     stepperZ.runSpeed();
-    animate();
   }
   stepperZ.stop();
 
@@ -259,13 +250,11 @@ void home_z()
   stepperZ.move(200); // Move 100 steps away
   while (stepperZ.distanceToGo() > 0) {
     stepperZ.run();
-    animate();
   }
   delay(100);
   stepperZ.setSpeed(HOMING_REDUCED_SPEED_Z); // Move back towards the switch slowly
   while (!digitalRead(LIMIT_SWITCH_Z_PIN)) {
     stepperZ.runSpeed();
-    animate();
   }
   stepperZ.stop();
 
@@ -273,7 +262,6 @@ void home_z()
   stepperZ.move(50); // Move away from the switch to disengage
   while (stepperZ.distanceToGo() > 0) {
     stepperZ.run();
-    animate();
   }
 
   stepperZ.setCurrentPosition(0); // When limit switch pressed set position to 0 steps
@@ -777,14 +765,18 @@ void arm_run()
     Serial.write(c); // Echo the character to the main serial port for debugging
 
     if (c == 'i') {
+      // Player done with their move. Wake up!
       idle_move_start = true;
-      animation_start = true;
+      animation_id = WAKE_UP;
     } else if (c == 'z') {
       home_all();
       curl_up();
+    } else if (c == 's') {
+      // Start of player's turn. Doze off if not received 'i' in 10 sec
+      animation_id = DOZE_OFF;
     } else if (c == '\n' || c == '\r') {
       // End of line character, ignore it but reset if in buffer
-      if(inputBuffer.length() != 0) {
+      if (inputBuffer.length() != 0) {
         Serial.println(F("Incomplete move, resetting buffer."));
         inputBuffer = ""; // Clear the buffer if we had partial data
       }
@@ -794,7 +786,7 @@ void arm_run()
       // Check if we have a full move in the buffer
       if (inputBuffer.length() == 6) {
         idle_move_start = false;
-        animation_start = false;
+        animation_id = RESET_POSE;
         Serial.println("\nInitiating move"); // Move to a new line
         execute_move(inputBuffer); // Process the move
         inputBuffer = ""; // Clear the buffer for the next move
@@ -842,5 +834,6 @@ void arm_init()
 
   home_all();
   curl_up();
+  animation_id = RESET_POSE;
   Serial.println("Robotic Arm initialized");
 }

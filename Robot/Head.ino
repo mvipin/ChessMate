@@ -6,12 +6,12 @@
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
 servo_cfg_t servo_cfg[SERVO_NUM_MAX] = {
-  {80, 530, 35, 100, 67}, // SERVO_RIGHT_EYELID (0)
-  {80, 530, 40, 120, 80}, // SERVO_RIGHT_EYEBALL (1)
-  {100, 500, 0, 180, 90}, // SERVO_RIGHT_EYELEVEL (2)
-  {80, 530, 80, 135, 107}, // SERVO_LEFT_EYELID (3)
-  {80, 530, 55, 140, 97}, // SERVO_LEFT_EYEBALL (4)
-  {100, 500, 0, 180, 90}, // SERVO_LEFT_EYELEVEL (5)
+  {80, 530, 35, 100, 0, 67}, // SERVO_RIGHT_EYELID (0)
+  {80, 530, 40, 120, 0, 80}, // SERVO_RIGHT_EYEBALL (1)
+  {100, 500, 0, 180, 0, 90}, // SERVO_RIGHT_EYELEVEL (2)
+  {80, 530, 80, 135, 0, 107}, // SERVO_LEFT_EYELID (3)
+  {80, 530, 55, 140, 0, 97}, // SERVO_LEFT_EYEBALL (4)
+  {100, 500, 0, 180, 0, 90}, // SERVO_LEFT_EYELEVEL (5)
 };
 
 bool set_eyeball(eye_t eye, pos_clk_t clk, unsigned long interval)
@@ -43,6 +43,11 @@ bool set_eyeball(eye_t eye, pos_clk_t clk, unsigned long interval)
 
   servo_id_t servo_id = (eye == EYE_RIGHT) ? SERVO_RIGHT_EYEBALL : SERVO_LEFT_EYEBALL;
   uint16_t degrees = (uint16_t)(servo_cfg[servo_id].degree_low + ((servo_cfg[servo_id].degree_high - servo_cfg[servo_id].degree_low) * factor));
+  if (!interval) {
+    servo_cfg[servo_id].degree_cur = degrees;
+    uint16_t pulse_len = map(servo_cfg[servo_id].degree_cur, 0, 180, servo_cfg[servo_id].pulse_min, servo_cfg[servo_id].pulse_max);
+    pwm.setPWM(servo_id, 0, pulse_len);
+  }
   if (degrees == servo_cfg[servo_id].degree_cur) {
     return true;
   }
@@ -61,7 +66,7 @@ bool set_eyeball(eye_t eye, pos_clk_t clk, unsigned long interval)
   return false;
 }
 
-void set_eyelid(eye_t eye, pos_gap_t gap)
+bool set_eyelid(eye_t eye, pos_gap_t gap, unsigned long interval)
 {
   float factor;
   switch (gap) {
@@ -83,13 +88,31 @@ void set_eyelid(eye_t eye, pos_gap_t gap)
   }
 
   servo_id_t servo_id = (eye == EYE_RIGHT) ? SERVO_RIGHT_EYELID : SERVO_LEFT_EYELID;
-  float degrees = servo_cfg[servo_id].degree_low + ((servo_cfg[servo_id].degree_high - servo_cfg[servo_id].degree_low) * factor);
-  uint16_t pulse_len = map(degrees, 0, 180, servo_cfg[servo_id].pulse_min, servo_cfg[servo_id].pulse_max);
-  pwm.setPWM(servo_id, 0, pulse_len);
-  servo_cfg[servo_id].degree_cur = degrees;
+  uint16_t degrees = servo_cfg[servo_id].degree_low + ((servo_cfg[servo_id].degree_high - servo_cfg[servo_id].degree_low) * factor);
+  if (!interval) {
+    servo_cfg[servo_id].degree_cur = degrees;
+    uint16_t pulse_len = map(servo_cfg[servo_id].degree_cur, 0, 180, servo_cfg[servo_id].pulse_min, servo_cfg[servo_id].pulse_max);
+    pwm.setPWM(servo_id, 0, pulse_len);
+  }
+  if (degrees == servo_cfg[servo_id].degree_cur) {
+    return true;
+  }
+  unsigned long currentMillis = millis();
+  if ((currentMillis - servo_cfg[servo_id].update_ts) > interval) {
+    if (servo_cfg[servo_id].degree_cur < degrees) {
+      servo_cfg[servo_id].degree_cur += 1;
+    } else if (servo_cfg[servo_id].degree_cur > degrees) {
+      servo_cfg[servo_id].degree_cur -= 1;
+    }
+    uint16_t pulse_len = map(servo_cfg[servo_id].degree_cur, 0, 180, servo_cfg[servo_id].pulse_min, servo_cfg[servo_id].pulse_max);
+    pwm.setPWM(servo_id, 0, pulse_len);
+    servo_cfg[servo_id].update_ts = currentMillis;
+  }
+
+  return false;
 }
 
-void set_eyelevel(eye_t eye, pos_level_t level)
+bool set_eyelevel(eye_t eye, pos_level_t level, unsigned long interval)
 {
   float factor;
   switch (level) {
@@ -117,60 +140,80 @@ void set_eyelevel(eye_t eye, pos_level_t level)
   }
 
   servo_id_t servo_id = (eye == EYE_RIGHT) ? SERVO_RIGHT_EYELEVEL : SERVO_LEFT_EYELEVEL;
-  float degrees = servo_cfg[servo_id].degree_low + ((servo_cfg[servo_id].degree_high - servo_cfg[servo_id].degree_low) * factor);
-  uint16_t pulse_len = map(degrees, 0, 180, servo_cfg[servo_id].pulse_min, servo_cfg[servo_id].pulse_max);
-  pwm.setPWM(servo_id, 0, pulse_len);
-  servo_cfg[servo_id].degree_cur = degrees;
+  uint16_t degrees = servo_cfg[servo_id].degree_low + ((servo_cfg[servo_id].degree_high - servo_cfg[servo_id].degree_low) * factor);
+  if (!interval) {
+    servo_cfg[servo_id].degree_cur = degrees;
+    uint16_t pulse_len = map(servo_cfg[servo_id].degree_cur, 0, 180, servo_cfg[servo_id].pulse_min, servo_cfg[servo_id].pulse_max);
+    pwm.setPWM(servo_id, 0, pulse_len);
+  }
+  if (degrees == servo_cfg[servo_id].degree_cur) {
+    return true;
+  }
+  unsigned long currentMillis = millis();
+  if ((currentMillis - servo_cfg[servo_id].update_ts) > interval) {
+    if (servo_cfg[servo_id].degree_cur < degrees) {
+      servo_cfg[servo_id].degree_cur += 1;
+    } else if (servo_cfg[servo_id].degree_cur > degrees) {
+      servo_cfg[servo_id].degree_cur -= 1;
+    }
+    uint16_t pulse_len = map(servo_cfg[servo_id].degree_cur, 0, 180, servo_cfg[servo_id].pulse_min, servo_cfg[servo_id].pulse_max);
+    pwm.setPWM(servo_id, 0, pulse_len);
+    servo_cfg[servo_id].update_ts = currentMillis;
+  }
+
+  return false;
 }
 
 void eyelids_test()
 {
+#define INTERVAL 20
   for (int gap = FULLY_OPEN; gap <= FULLY_CLOSED; gap++) {
-    set_eyelid(EYE_LEFT, gap);
-    set_eyelid(EYE_RIGHT, gap);
-    delay(500);
+    set_eyelid(EYE_LEFT, gap, 0);
+    set_eyelid(EYE_RIGHT, gap, 0);
   }
   for (int gap = FULLY_CLOSED; gap >= FULLY_OPEN; gap--) {
-    set_eyelid(EYE_LEFT, gap);
-    set_eyelid(EYE_RIGHT, gap);
-    delay(500);
+    set_eyelid(EYE_LEFT, gap, 0);
+    set_eyelid(EYE_RIGHT, gap, 0);
   }
 }
 
 void eyeballs_test()
 {
-  set_eyelid(EYE_LEFT, FULLY_OPEN);
-  set_eyelid(EYE_RIGHT, FULLY_OPEN);
+#define INTERVAL 20
+  set_eyelid(EYE_LEFT, FULLY_OPEN, 0);
+  set_eyelid(EYE_RIGHT, FULLY_OPEN, 0);
   for (int clk = FULLY_RIGHT; clk <= FULLY_LEFT; clk++) {
-    set_eyeball(EYE_LEFT, clk, 5);
-    set_eyeball(EYE_RIGHT, clk, 5);
+    set_eyeball(EYE_LEFT, clk, 0);
+    set_eyeball(EYE_RIGHT, clk, 0);
     delay(500);
   }
   for (int clk = FULLY_LEFT; clk >= FULLY_RIGHT; clk--) {
-    set_eyeball(EYE_LEFT, clk, 5);
-    set_eyeball(EYE_RIGHT, clk, 5);
+    set_eyeball(EYE_LEFT, clk, 0);
+    set_eyeball(EYE_RIGHT, clk, 0);
     delay(500);
   }
 }
 
 void eyelevel_test()
 {
-  set_eyelid(EYE_LEFT, HALF_OPEN);
-  set_eyelid(EYE_RIGHT, HALF_OPEN);
+#define INTERVAL 20
+  set_eyelid(EYE_LEFT, HALF_OPEN, 0);
+  set_eyelid(EYE_RIGHT, HALF_OPEN, 0);
   for (int level = FULLY_DOWN; level <= FULLY_UP; level++) {
-    set_eyelevel(EYE_LEFT, level);
-    set_eyelevel(EYE_RIGHT, level);
+    set_eyelevel(EYE_LEFT, level, 0);
+    set_eyelevel(EYE_RIGHT, level, 0);
     delay(1000);
   }
   for (int level = FULLY_UP; level >= FULLY_DOWN; level--) {
-    set_eyelevel(EYE_LEFT, level);
-    set_eyelevel(EYE_RIGHT, level);
+    set_eyelevel(EYE_LEFT, level, 0);
+    set_eyelevel(EYE_RIGHT, level, 0);
     delay(1000);
   }
 }
 
 void expression_1()
 {
+#define INTERVAL 20
   static uint32_t previousMillis = 0;
   static int step = 0;
   uint32_t currentMillis = millis();
@@ -178,36 +221,36 @@ void expression_1()
   switch (step) {
     case 0: {
       if (currentMillis - previousMillis >= 700) {
-        set_eyelid(EYE_LEFT, FULLY_OPEN);
-        set_eyelid(EYE_RIGHT, FULLY_OPEN);
+        set_eyelid(EYE_LEFT, FULLY_OPEN, INTERVAL);
+        set_eyelid(EYE_RIGHT, FULLY_OPEN, INTERVAL);
         set_eyeball(EYE_LEFT, CENTER, 5);
         set_eyeball(EYE_RIGHT, CENTER, 5);
-        set_eyelevel(EYE_LEFT, SLIGHTLY_TILTED_DOWN);
-        set_eyelevel(EYE_RIGHT, SLIGHTLY_TILTED_UP);
+        set_eyelevel(EYE_LEFT, SLIGHTLY_TILTED_DOWN, INTERVAL);
+        set_eyelevel(EYE_RIGHT, SLIGHTLY_TILTED_UP, INTERVAL);
         previousMillis = currentMillis;
         step = 1;
       }
     } break;
     case 1: {
       if (currentMillis - previousMillis >= 700) {
-        set_eyelevel(EYE_LEFT, NEUTRAL);
-        set_eyelevel(EYE_RIGHT, NEUTRAL);
+        set_eyelevel(EYE_LEFT, NEUTRAL, INTERVAL);
+        set_eyelevel(EYE_RIGHT, NEUTRAL, INTERVAL);
         previousMillis = currentMillis;
         step = 2;
       }
     }  break;
     case 2: {
       if (currentMillis - previousMillis >= 700) {
-        set_eyelevel(EYE_LEFT, SLIGHTLY_TILTED_UP);
-        set_eyelevel(EYE_RIGHT, SLIGHTLY_TILTED_DOWN);
+        set_eyelevel(EYE_LEFT, SLIGHTLY_TILTED_UP, INTERVAL);
+        set_eyelevel(EYE_RIGHT, SLIGHTLY_TILTED_DOWN, INTERVAL);
         previousMillis = currentMillis;
         step = 3;
       }
     } break;
     case 3: {
       if (currentMillis - previousMillis >= 700) {
-        set_eyelevel(EYE_RIGHT, NEUTRAL);
-        set_eyelevel(EYE_LEFT, NEUTRAL);
+        set_eyelevel(EYE_RIGHT, NEUTRAL, INTERVAL);
+        set_eyelevel(EYE_LEFT, NEUTRAL, INTERVAL);
         previousMillis = currentMillis;
         step = 4;
       }
@@ -247,118 +290,132 @@ void expression_1()
   }
 }
 
-#if 0
-void expression_2()
+void animate_reset_pose()
 {
-#define DELAY 300
-
-  // Write your code here
-  set_eyelevel(EYE_RIGHT, FULLY_DOWN);
-  set_eyelevel(EYE_LEFT, FULLY_DOWN);
-  set_eyelid(EYE_RIGHT, PARTIALLY_CLOSED);
-  set_eyelid(EYE_LEFT, PARTIALLY_CLOSED);
-  set_eyeball(EYE_RIGHT, CENTER);
-  set_eyeball(EYE_LEFT, CENTER);
-  delay(DELAY);
-  set_eyeball(EYE_RIGHT, SLIGHTLY_LEFT);
-  set_eyeball(EYE_LEFT, SLIGHTLY_LEFT);
-  delay(DELAY);
-  set_eyeball(EYE_RIGHT, PARTIALLY_LEFT);
-  set_eyeball(EYE_LEFT, PARTIALLY_LEFT);
-  delay(DELAY);
-  set_eyeball(EYE_RIGHT, SLIGHTLY_LEFT);
-  set_eyeball(EYE_LEFT, SLIGHTLY_LEFT);
-  delay(DELAY);
-  set_eyeball(EYE_RIGHT, CENTER);
-  set_eyeball(EYE_LEFT, CENTER); 
-  delay(DELAY);
-  set_eyeball(EYE_RIGHT, SLIGHTLY_RIGHT);
-  set_eyeball(EYE_LEFT, SLIGHTLY_RIGHT);
-  delay(DELAY);
-  set_eyeball(EYE_RIGHT, PARTIALLY_RIGHT);
-  set_eyeball(EYE_LEFT, PARTIALLY_RIGHT);
-  delay(DELAY);
-  set_eyeball(EYE_RIGHT, SLIGHTLY_RIGHT);
-  set_eyeball(EYE_LEFT, SLIGHTLY_RIGHT);
-  delay(DELAY);
+  set_eyelevel(EYE_RIGHT, NEUTRAL, 0);
+  set_eyelevel(EYE_LEFT, NEUTRAL, 0);
+  set_eyelid(EYE_RIGHT, HALF_OPEN, 0);
+  set_eyelid(EYE_LEFT, HALF_OPEN, 0);
+  set_eyeball(EYE_RIGHT, CENTER, 0);
+  set_eyeball(EYE_LEFT, CENTER, 0);
+  animation_id = DO_NOTHING;
 }
 
-void expression_3()
-{
-  set_eyelevel(EYE_RIGHT, LOWER_TILTED);
-  set_eyelevel(EYE_LEFT, SLIGHTLY_TILTED_UP);
-  set_eyelid(EYE_RIGHT, FULLY_CLOSED);
-  set_eyelid(EYE_LEFT, FULLY_CLOSED);
-  delay(1000);
-  set_eyelid(EYE_RIGHT, PARTIALLY_CLOSED);
-  set_eyelid(EYE_LEFT, PARTIALLY_CLOSED);
-  delay(1000);
-  set_eyelid(EYE_RIGHT, FULLY_CLOSED);
-  set_eyelid(EYE_LEFT, FULLY_CLOSED);
-  delay(5000);
-  set_eyelevel(EYE_RIGHT, RAISED_TILTED);
-  set_eyelevel(EYE_LEFT, RAISED_TILTED);
-  set_eyelid(EYE_RIGHT, FULLY_OPEN);
-  set_eyelid(EYE_LEFT, FULLY_OPEN);
-  delay(5000);
-}
-#endif
-
-void expression_test()
+void animate_think_hard()
 {
 #define INTERVAL 20
-  static uint32_t previousMillis = 0;
   static int step = 0;
-  uint32_t currentMillis = millis();
 
   switch (step) {
     case 0: {
-      if (currentMillis - previousMillis >= 700) {
-        bool done1 = set_eyeball(EYE_LEFT, CENTER, INTERVAL);
-        bool done2 = set_eyeball(EYE_RIGHT, CENTER, INTERVAL);
-        if (done1 && done2) {
-          previousMillis = currentMillis;
-          step = 1;
-        }
+      bool done1 = set_eyelevel(EYE_RIGHT, FULLY_DOWN, INTERVAL);
+      bool done2 = set_eyelevel(EYE_LEFT, FULLY_DOWN, INTERVAL);
+      bool done3 = set_eyelid(EYE_RIGHT, PARTIALLY_CLOSED, INTERVAL);
+      bool done4 = set_eyelid(EYE_LEFT, PARTIALLY_CLOSED, INTERVAL);
+      bool done5 = set_eyeball(EYE_RIGHT, CENTER, INTERVAL);
+      bool done6 = set_eyeball(EYE_LEFT, CENTER, INTERVAL);
+      if (done1 && done2 && done3 && done4 && done5 && done6) {
+        step = 1;
       }
     } break;
     case 1: {
-      if (currentMillis - previousMillis >= 700) {
-        bool done1 = set_eyeball(EYE_RIGHT, FULLY_RIGHT, INTERVAL);
-        bool done2 = set_eyeball(EYE_LEFT, FULLY_RIGHT, INTERVAL);
-        if (done1 && done2) {
-          previousMillis = currentMillis;
-          step = 2;
-        }
+      bool done1 = set_eyeball(EYE_RIGHT, PARTIALLY_LEFT, INTERVAL);
+      bool done2 = set_eyeball(EYE_LEFT, PARTIALLY_LEFT, INTERVAL);
+      if (done1 && done2) {
+        step = 2;
       }
     } break;
     case 2: {
-      if (currentMillis - previousMillis >= 700) {
-        bool done1 = set_eyeball(EYE_RIGHT, CENTER, INTERVAL);
-        bool done2 = set_eyeball(EYE_LEFT, CENTER, INTERVAL);
-        if (done1 && done2) {
-          previousMillis = currentMillis;
-          step = 3;
-        }
-      }
-    } break;
-    case 3: {
-      if (currentMillis - previousMillis >= 700) {
-        bool done1 = set_eyeball(EYE_RIGHT, FULLY_LEFT, INTERVAL);
-        bool done2 = set_eyeball(EYE_LEFT, FULLY_LEFT, INTERVAL);
-        if (done1 && done2) {
-          previousMillis = currentMillis;
-          step = 0;
-        }
+      bool done1 = set_eyeball(EYE_RIGHT, PARTIALLY_RIGHT, INTERVAL);
+      bool done2 = set_eyeball(EYE_LEFT, PARTIALLY_RIGHT, INTERVAL);
+      if (done1 && done2) {
+        step = 0;
       }
     } break;
   }
 }
 
+void animate_doze_off()
+{
+#define INTERVAL 20
+  static int step = 0;
+  static unsigned long previousMillis = 0;
+  static unsigned long lastvisitMillis = 0;
+  unsigned long currentMillis = millis();
+
+  // If last time we got interrupted without actually going to step 3, it will reset the state to 0
+  if ((currentMillis - lastvisitMillis) >= 15000) {
+    step = 0;
+  }
+
+  switch (step) {
+    case 0: {
+      previousMillis = currentMillis;
+      step = 1;
+    } break;
+    case 1: {
+      if (currentMillis - previousMillis >= 10000) {
+        bool done1 = set_eyelevel(EYE_RIGHT, LOWER_TILTED, INTERVAL);
+        bool done2 = set_eyelevel(EYE_LEFT, SLIGHTLY_TILTED_UP, INTERVAL);
+        bool done3 = set_eyelid(EYE_RIGHT, FULLY_CLOSED, INTERVAL);
+        bool done4 = set_eyelid(EYE_LEFT, FULLY_CLOSED, INTERVAL);
+        if (done1 && done2 && done3 && done4) {
+          step = 2;
+        }
+      }
+    } break;
+    case 2: {
+      bool done1 = set_eyelid(EYE_RIGHT, PARTIALLY_CLOSED, INTERVAL);
+      bool done2 = set_eyelid(EYE_LEFT, PARTIALLY_CLOSED, INTERVAL);
+      if (done1 && done2) {
+        step = 3;
+      }
+    } break;
+    case 3: {
+      bool done1 = set_eyelid(EYE_RIGHT, FULLY_CLOSED, INTERVAL);
+      bool done2 = set_eyelid(EYE_LEFT, FULLY_CLOSED, INTERVAL);
+      if (done1 && done2) {
+        step = 0;
+        animation_id = DO_NOTHING;
+      }
+    } break;
+  }
+  lastvisitMillis = currentMillis;
+}
+
+void animate_wake_up()
+{
+  set_eyelevel(EYE_RIGHT, RAISED_TILTED, 0);
+  set_eyelevel(EYE_LEFT, RAISED_TILTED, 0);
+  set_eyelid(EYE_RIGHT, FULLY_OPEN, 0);
+  set_eyelid(EYE_LEFT, FULLY_OPEN, 0);
+  animation_id = THINK_HARD;
+}
+
+void simple_test()
+{
+  set_eyelevel(EYE_LEFT, FULLY_UP, 20);
+  set_eyelevel(EYE_RIGHT, FULLY_UP, 20);
+}
+
 void animate()
 {
-  if (animation_start) {
-    expression_test();
+  switch (animation_id) {
+    case RESET_POSE: {
+      animate_reset_pose();
+    } break;
+
+    case DOZE_OFF: {
+      animate_doze_off();
+    } break;
+
+    case WAKE_UP: {
+      animate_wake_up();
+    } break;
+
+    case THINK_HARD: {
+      animate_think_hard();
+    } break;
   }
 }
 

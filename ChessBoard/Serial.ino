@@ -76,6 +76,7 @@ void process_cmd(char cmd[], uint8_t size) {
   } else if (strcmp(tokens[idx],"start") == 0) {
     set_control_pixel(HUMAN, GREEN);
     set_control_pixel(COMPUTER, BLACK);
+    send_indication("s");
     print_legal_moves();
     state = MOVE_RESET;
   } else if (strcmp(tokens[idx],"override") == 0) {

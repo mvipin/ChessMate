@@ -1,15 +1,16 @@
 #include "Arm.h"
 #include "Head.h"
 
-bool animation_start;
+animation_id_t animation_id;
 
 void setup()
 {
   Serial.begin(9600);
-  arm_init();
   head_init();
+  arm_init();
 }
 
 void loop() {
   arm_run();
+  animate();
 }

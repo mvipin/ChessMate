@@ -44,6 +44,14 @@ typedef enum {
   FULLY_UP,
 } pos_level_t;
 
+typedef enum {
+  DO_NOTHING,
+  RESET_POSE,
+  DOZE_OFF,
+  WAKE_UP,
+  THINK_HARD,
+} animation_id_t;
+
 typedef struct {
   uint16_t pulse_min;
   uint16_t pulse_max;
