@@ -9,6 +9,8 @@ char special_moves[MOVE_TYPE_MAX][5];
 bool confirm, hint;
 uint8_t hint_override_cnt = 0;
 unsigned long prev_override_ms = 0;
+uint8_t confirm_zreset_cnt = 0;
+unsigned long prev_zreset_ms = 0;
 
 void process_board() {
   if (state == MOVE_RESET) {
@@ -71,6 +73,18 @@ void process_board() {
         send_indication("i");
       } else {
         state = MOVE_RESET;
+        unsigned long curr_zreset_ms = millis();
+        if (confirm_zreset_cnt == 0 || curr_zreset_ms - prev_zreset_ms <= CONFIRM_ZRESET_INTERVAL) {
+          confirm_zreset_cnt++;
+          prev_zreset_ms = curr_zreset_ms;  // Reset the timer
+          if (confirm_zreset_cnt == CONFIRM_ZRESET_CNT) {
+            send_indication("a");
+            confirm_zreset_cnt = 0;
+          }
+        } else {
+          confirm_zreset_cnt = 1;
+          prev_zreset_ms = curr_zreset_ms;
+        }
       }
     } else if (state == MOVE_COMP) {
       // TODO: For now, we will just send the ACK assuming the player 

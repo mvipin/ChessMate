@@ -56,6 +56,8 @@ enum {
 #define CMD_LEN_MAX 128
 #define HINT_OVERRIDE_CNT 3
 #define HINT_OVERRIDE_INTERVAL 3000
+#define CONFIRM_ZRESET_CNT 3
+#define CONFIRM_ZRESET_INTERVAL 3000
 
 void get_algebraic_notation(int row, int col, char *notation) {
   if (row >= 0 && row < CHESS_ROWS && col >= 0 && col < CHESS_COLS) {

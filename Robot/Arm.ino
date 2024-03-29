@@ -769,6 +769,9 @@ void arm_run()
       // Player done with their move. Wake up!
       idle_move_start = true;
       animation_id = WAKE_UP;
+    } else if (c == 'a') {
+      home_z();
+      move_z_to(Z_MAX);
     } else if (c == 'z') {
       home_all();
       curl_up();
