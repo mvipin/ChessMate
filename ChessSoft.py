@@ -44,6 +44,7 @@ class ChessSoft:
         taken_piece_letter = moving_piece_letter
         if taken_piece != None:
             taken_piece_letter = taken_piece.symbol().lower()
+            await self.play_capture_sound(taken_piece_letter)
             if taken_piece_letter == moving_piece_letter:
                 taken_piece_letter = 'x'
         start_square = chess.square_name(move.from_square)
@@ -221,6 +222,26 @@ class ChessSoft:
 
         print(f"Generated move sound: {move_sound_file}")
         return move_sound_file
+
+    async def play_capture_sound(self, piece_letter):
+        piece_sound_map = {
+            'k': 'king_0.wav',
+            'q': 'queen_0.wav',
+            'b': 'bishop_0.wav',
+            'n': 'knight_0.wav',
+            'r': 'rook_0.wav',
+            'p': 'pawn_0.wav'
+        }
+        sound_file = piece_sound_map.get(piece_letter.lower(), None)
+        if sound_file:
+            sound_path = os.path.join("sounds/pieces", sound_file)
+            if os.path.exists(sound_path):
+                process = await asyncio.create_subprocess_exec('aplay', sound_path)
+                await process.wait()
+            else:
+                print(f"Sound file for {piece_letter} not found at {sound_path}")
+        else:
+            print(f"No sound mapping found for piece letter: {piece_letter}")
 
     async def play_move_sound(self, start_square, end_square, squares_dir='sounds/squares', moves_dir='sounds/moves'):
         move_sound_file_path = os.path.join(moves_dir, start_square, f"move_{start_square}_to_{end_square}.wav")
