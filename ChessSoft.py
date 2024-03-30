@@ -17,6 +17,7 @@ class ChessSoft:
         self.serial = ser
         self.treset = False
         self.snore = False
+        self.play_capture = True
         self.prev_comments = []
 
     def random_player(self):
@@ -44,7 +45,9 @@ class ChessSoft:
         taken_piece_letter = moving_piece_letter
         if taken_piece != None:
             taken_piece_letter = taken_piece.symbol().lower()
-            await self.play_capture_sound(taken_piece_letter)
+            if self.play_capture:
+                await self.play_capture_sound(taken_piece_letter)
+            self.play_capture = True
             if taken_piece_letter == moving_piece_letter:
                 taken_piece_letter = 'x'
         start_square = chess.square_name(move.from_square)
@@ -283,6 +286,7 @@ class ChessSoft:
            self.prev_comments[-2:] == ["comment_0.wav", "comment_1.wav"] or \
            self.prev_comments[-2:] == ["comment_1.wav", "comment_0.wav"]:
             # Play a random fact
+            self.play_capture = False
             await self.play_random_fact()
             # Reset the history
             self.prev_comments = []
@@ -299,6 +303,7 @@ class ChessSoft:
             await self.play_comment_or_fact_based_on_history("comment_1.wav")
         else:
             # Always play a random fact if the score is 5, also reset history
+            self.play_capture = False
             await self.play_random_fact()
             self.prev_comments = []
 
