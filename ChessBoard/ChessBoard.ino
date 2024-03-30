@@ -78,7 +78,7 @@ void process_board() {
           confirm_zreset_cnt++;
           prev_zreset_ms = curr_zreset_ms;  // Reset the timer
           if (confirm_zreset_cnt == CONFIRM_ZRESET_CNT) {
-            send_indication("a");
+            send_indication("j");
             confirm_zreset_cnt = 0;
           }
         } else {
