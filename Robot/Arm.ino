@@ -174,7 +174,6 @@ void move_z_to(long steps)
   stepperZ.moveTo(steps);
   while (stepperZ.currentPosition() != steps) {
     stepperZ.run();
-    animate();
   }
 }
 
