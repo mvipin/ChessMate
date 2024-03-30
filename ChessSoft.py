@@ -5,6 +5,7 @@ import random
 import chess
 import chess.engine
 import subprocess
+import logging
 
 class ChessSoft:
     def __init__(self, ser):
@@ -19,6 +20,21 @@ class ChessSoft:
         self.snore = False
         self.play_capture = True
         self.prev_comments = []
+        log_directory = "/home/pi/ChessMate/logs"
+        os.makedirs(log_directory, exist_ok=True)
+        log_filename = os.path.join(log_directory, "chesssoft.log")
+        self.chesssoft_logger = self.setup_custom_logger('ChessSoftLogger', log_filename)
+
+    def setup_custom_logger(self, name, log_file, level=logging.DEBUG):
+        """Set up a custom logger that writes to a specific file."""
+        logger = logging.getLogger(name)
+        logger.setLevel(level)
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(level)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+        return logger
 
     def random_player(self):
         move = random.choice(list(self.board.legal_moves))
@@ -54,6 +70,7 @@ class ChessSoft:
         end_square = chess.square_name(move.to_square)
         extended_move = f"{start_square}{end_square}{moving_piece_letter}{taken_piece_letter}"
         print("extended move: " + extended_move)
+        self.chesssoft_logger.info("extended move: " + extended_move)
 
         command = "comp:" + extended_move + "\n"
         self.serial.write(command.encode('utf8'))
@@ -64,6 +81,7 @@ class ChessSoft:
         ack = line.decode('utf8').strip()
         # TODO compare move and ack. Ack is generated through sensing on board
         print("uci: " + uci + ", ack: " + ack)
+        self.chesssoft_logger.info("uci: " + uci + ", ack: " + ack)
         return uci
 
     async def get_hint(self):
@@ -81,15 +99,19 @@ class ChessSoft:
         color = self.board.color_at(chess.parse_square(start))
         legal_uci_moves = [move.uci() for move in self.board.legal_moves]
         print("Legal moves: " + (",".join(sorted(legal_uci_moves))))
+        self.chesssoft_logger.info("Legal moves: " + (",".join(sorted(legal_uci_moves))))
         possible_moves = list(filter(lambda x: start in x, legal_uci_moves))
         print("Possible moves: " + str(possible_moves))
+        self.chesssoft_logger.info("Possible moves: " + str(possible_moves))
         if color != self.board.turn or color == None or not possible_moves:
             #print("Invalid move")
             return None
         possible_squares = [sub.replace(start, '') for sub in possible_moves]
         print("Possible squares: " + str(possible_squares))
+        self.chesssoft_logger.info("Possible squares: " + str(possible_squares))
         for sq in possible_squares:
             print(chess.parse_square(sq))
+            self.chesssoft_logger.info(chess.parse_square(sq))
         return possible_squares
 
     def process_stop_cmd(self, start, stop, sq):
@@ -139,18 +161,21 @@ class ChessSoft:
             moves_with_prefix = [move for move in legal_uci_moves if move.startswith(char)]
             legal_moves = "legal:" + (":".join(moves_with_prefix)) + "\n"
             print(legal_moves)
+            self.chesssoft_logger.info(legal_moves)
             self.serial.write(legal_moves.encode('utf8'))
 
         hint = await self.get_hint()
         hint_str = "hint:" + hint + "\n"
         self.serial.write(hint_str.encode('utf8'))
         print(hint_str)
+        self.chesssoft_logger.info(hint_str)
         check = self.get_check_info()
         if check != "":
             check_str = "check:" + check + "\n"
             self.serial.write(check_str.encode('utf8'))
             await self.play_comment("comment_3.wav")
             print(check_str)
+            self.chesssoft_logger.info(check_str)
         start_str = "start\n"
         self.serial.write(start_str.encode('utf8'))
         if self.menu != None:
@@ -174,6 +199,7 @@ class ChessSoft:
             self.serial.write(occupancy_str.encode('utf8'))
             override_str = "override:" + uci + "\n"
             print(override_str)
+            self.chesssoft_logger.info(override_str)
             self.serial.write(override_str.encode('utf8'))
             while True:
                 if self.serial.inWaiting():
@@ -191,6 +217,7 @@ class ChessSoft:
             uci = None
         if uci == None:
             print("Invalid move")
+            self.chesssoft_logger.info("Invalid move")
         return uci
 
     def requires_promotion(self, uci):
@@ -316,6 +343,7 @@ class ChessSoft:
         start_square, end_square = uci[:2], uci[2:4]
         score = await self.evaluate_move(chess.Move.from_uci(uci))
         print("Score: " + str(score))
+        self.chesssoft_logger.info("Score: " + str(score))
         await self.sequential_sound_play(start_square, end_square, score)
         return uci
 
@@ -365,6 +393,7 @@ class ChessSoft:
             self.depth = 5
             self.time = 0.05
         print("skill depth: " + str(self.depth) + ", skill time: " + str(self.time))
+        self.chesssoft_logger.info("skill depth: " + str(self.depth) + ", skill time: " + str(self.time))
 
     def get_result(self):
         result = None
@@ -427,6 +456,7 @@ class ChessSoft:
             self.serial.write(result_str.encode('utf8'))
             self.menu.show_game_status(result_str)
             print(result_str)
+            self.chesssoft_logger.info(result_str)
             await self.play_comment("comment_2.wav")
             '''
             while True:
@@ -450,6 +480,7 @@ class ChessSoft:
         self.snore = True
         self.board.push_uci(uci)
         print(self.board)
+        self.chesssoft_logger.info(self.board)
 
     def is_human_turn(self):
         if self.board.turn == chess.WHITE and self.player1 == self.human_player:
@@ -468,7 +499,10 @@ class ChessSoft:
             #name = self.who(self.board.turn)
             self.board.push_uci(uci)
             print(self.board)
+            self.chesssoft_logger.info(self.board)
             print("\n")
+            self.chesssoft_logger.info("\n")
         result, msg = self.get_result()
         print(msg)
+        self.chesssoft_logger.info(msg)
         return (result, msg, self.board)
