@@ -61,6 +61,7 @@
 #define HOMING_REDUCED_SPEED_Z (-(MAX_SPEED_Z >> 1))
 #define ACCELERATION_Z 1500
 #define Z_MIN 200
+#define Z_LOW 500
 #define Z_MAX 2500
 
 #define Z_MIN_PAWN_OFFSET 0
@@ -244,26 +245,7 @@ void home_z()
     stepperZ.runSpeed();
   }
   stepperZ.stop();
-
-  // Locate mode - move slowly away from the switch and then back to engage it slowly
-  stepperZ.move(200); // Move 100 steps away
-  while (stepperZ.distanceToGo() > 0) {
-    stepperZ.run();
-  }
-  delay(100);
-  stepperZ.setSpeed(HOMING_REDUCED_SPEED_Z); // Move back towards the switch slowly
-  while (!digitalRead(LIMIT_SWITCH_Z_PIN)) {
-    stepperZ.runSpeed();
-  }
-  stepperZ.stop();
-
-  // Pull-off motion - move away from the limit switch to disengage it
-  stepperZ.move(50); // Move away from the switch to disengage
-  while (stepperZ.distanceToGo() > 0) {
-    stepperZ.run();
-  }
-
-  stepperZ.setCurrentPosition(0); // When limit switch pressed set position to 0 steps
+  stepperZ.setCurrentPosition(-50); // When limit switch pressed set position to 0 steps
 }
 
 void home_all()
@@ -332,7 +314,6 @@ void curl_up()
 {
   move_y_to(-10);
   move_x_to(STEP_ZERO_ANGLE(X));
-  //move_y_to(STEP_ZERO_ANGLE(Y) + ((STEP_ZERO_ANGLE(X) - 90)/PULLEY_RATIO));
 }
 
 void dump_eeprom()
@@ -590,7 +571,7 @@ void calibrate_square(String sq, bool eeprom)
   stepperX.setMaxSpeed(REDUCED_SPEED_X);
   stepperY.setMaxSpeed(REDUCED_SPEED_Y);
   move_xy_to(angle1, angle2 - ((90-angle1)/PULLEY_RATIO));
-  move_z_to(Z_MIN);
+  move_z_to(adjusted_z_min(PIECE_TYPE_QUEEN, current_square_index / CHESS_ROWS));
   while (true) {
     if (Serial.available() > 0) {
       char input = Serial.read();
@@ -689,6 +670,20 @@ void idle_move()
     i = (i + 1) % 4;
 }
 
+bool are_squares_adjacent(int start_index, int end_index) {
+  // Calculate row and column for start and end indices
+  int start_row = start_index / CHESS_COLS;
+  int start_col = start_index % CHESS_COLS;
+  int end_row = end_index / CHESS_COLS;
+  int end_col = end_index % CHESS_COLS;
+
+  // Check if the squares are adjacent
+  if ((abs(start_row - end_row) <= 1) && (abs(start_col - end_col) <= 1)) {
+    return true; // Squares are adjacent
+  }
+  return false; // Squares are not adjacent
+}
+
 void execute_move(String move)
 {
   // Move type?
@@ -712,16 +707,23 @@ void execute_move(String move)
   }
 
   // Simple piece movement
+  int start_index = chess_notation_to_index(move.substring(0, 2));
+  int end_index = chess_notation_to_index(move.substring(2, 4));
+  bool is_adjacent = are_squares_adjacent(start_index, end_index);
   String sq = move.substring(0, 2);
   move_to_square(sq);
   gripper_open();
-  move_z_to(adjusted_z_min(piece_type(move[4]), chess_notation_to_index(sq) / CHESS_ROWS));
+  move_z_to(adjusted_z_min(piece_type(move[4]), start_index / CHESS_ROWS));
   gripper_close();
   delay(500);
-  move_z_to(Z_MAX);
+  if (is_adjacent) {
+    move_z_to(adjusted_z_min(piece_type(move[4]), start_index / CHESS_ROWS) + Z_LOW);
+  } else {
+    move_z_to(Z_MAX);
+  }
   sq = move.substring(2, 4);
   move_to_square(sq);
-  move_z_to(adjusted_z_min(piece_type(move[4]), chess_notation_to_index(sq) / CHESS_ROWS));
+  move_z_to(adjusted_z_min(piece_type(move[4]), end_index / CHESS_ROWS));
   gripper_open();
   delay(500);
   move_z_to(Z_MAX);
